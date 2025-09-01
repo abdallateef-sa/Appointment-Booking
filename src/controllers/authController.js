@@ -11,7 +11,7 @@ import {
 } from "../utils/emailTemplates.js";
 
 // Step 1: Send OTP to email for verification
-const sendEmailVerification = asyncWrapper(async (req, res, next) => {
+export const sendEmailVerification = asyncWrapper(async (req, res, next) => {
   const { email } = req.body;
 
   // Check if user already exists and is fully registered
@@ -80,7 +80,7 @@ const sendEmailVerification = asyncWrapper(async (req, res, next) => {
 });
 
 // Step 2: Verify OTP (Unified for registration and login)
-const verifyOtp = asyncWrapper(async (req, res, next) => {
+export const verifyOtp = asyncWrapper(async (req, res, next) => {
   const { email, otp } = req.body;
 
   const foundUser = await user.findOne({ email });
@@ -170,7 +170,7 @@ const verifyOtp = asyncWrapper(async (req, res, next) => {
 });
 
 // Step 3: Complete registration with personal information
-const completeRegistration = asyncWrapper(async (req, res, next) => {
+export const completeRegistration = asyncWrapper(async (req, res, next) => {
   const { firstName, lastName, phone, gender, country } = req.body;
 
   // Get user ID from token
@@ -254,11 +254,6 @@ const completeRegistration = asyncWrapper(async (req, res, next) => {
   });
 });
 
-export default {
-  sendEmailVerification,
-  verifyOtp,
-  completeRegistration,
-};
 
 // =====================
 // Login with OTP (Passwordless)
@@ -304,41 +299,41 @@ export const sendLoginOtp = asyncWrapper(async (req, res, next) => {
   });
 });
 
-// Verify login OTP and issue auth token
-export const verifyLoginOtp = asyncWrapper(async (req, res, next) => {
-  const { email, otp } = req.body;
+// // Verify login OTP and issue auth token
+// export const verifyLoginOtp = asyncWrapper(async (req, res, next) => {
+//   const { email, otp } = req.body;
 
-  const foundUser = await user.findOne({
-    email,
-    loginOtpExpires: { $gt: Date.now() },
-    loginOtpCode: { $exists: true },
-  });
+//   const foundUser = await user.findOne({
+//     email,
+//     loginOtpExpires: { $gt: Date.now() },
+//     loginOtpCode: { $exists: true },
+//   });
 
-  if (!foundUser) {
-    return next(
-      new AppError("Invalid or expired login code", 400, httpStatusText.FAIL)
-    );
-  }
+//   if (!foundUser) {
+//     return next(
+//       new AppError("Invalid or expired login code", 400, httpStatusText.FAIL)
+//     );
+//   }
 
-  const isOtpValid = await bcrypt.compare(otp, foundUser.loginOtpCode);
-  if (!isOtpValid) {
-    return next(new AppError("Invalid login code", 400, httpStatusText.FAIL));
-  }
+//   const isOtpValid = await bcrypt.compare(otp, foundUser.loginOtpCode);
+//   if (!isOtpValid) {
+//     return next(new AppError("Invalid login code", 400, httpStatusText.FAIL));
+//   }
 
-  // Clear login OTP
-  foundUser.loginOtpCode = undefined;
-  foundUser.loginOtpExpires = undefined;
-  await foundUser.save({ validateBeforeSave: false });
+//   // Clear login OTP
+//   foundUser.loginOtpCode = undefined;
+//   foundUser.loginOtpExpires = undefined;
+//   await foundUser.save({ validateBeforeSave: false });
 
-  const token = await generateJWT({
-    email: foundUser.email,
-    id: foundUser._id,
-    role: foundUser.role,
-  });
+//   const token = await generateJWT({
+//     email: foundUser.email,
+//     id: foundUser._id,
+//     role: foundUser.role,
+//   });
 
-  res.status(200).json({
-    status: httpStatusText.SUCCESS,
-    message: "Logged in successfully",
-    data: { token },
-  });
-});
+//   res.status(200).json({
+//     status: httpStatusText.SUCCESS,
+//     message: "Logged in successfully",
+//     data: { token },
+//   });
+// });

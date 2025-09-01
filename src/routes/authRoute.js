@@ -1,8 +1,5 @@
 import express from "express";
-import authController, {
-  sendLoginOtp,
-  verifyLoginOtp,
-} from "../controllers/authController.js";
+import {sendEmailVerification,verifyOtp,completeRegistration,sendLoginOtp,} from "../controllers/authController.js";
 import verifyToken from "../middlewares/verifyToken.js";
 import {
   validateSendOtp,
@@ -19,7 +16,7 @@ router.post(
   "/send-otp",
   validateSendOtp,
   handleValidationErrors,
-  authController.sendEmailVerification
+  sendEmailVerification
 );
 
 // Step 2: Verify email with OTP
@@ -27,7 +24,7 @@ router.post(
   "/verify-otp",
   validateVerifyOtp,
   handleValidationErrors,
-  authController.verifyOtp
+  verifyOtp
 );
 
 // Step 3: Complete registration with personal info (requires token)
@@ -36,7 +33,7 @@ router.post(
   verifyToken,
   validateCompleteRegistration,
   handleValidationErrors,
-  authController.completeRegistration
+  completeRegistration
 );
 
 // Login (passwordless via OTP)
