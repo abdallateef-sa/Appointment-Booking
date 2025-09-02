@@ -1,0 +1,161 @@
+{
+  "info": {
+    "name": "Appointment-Booking User Flow",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth - Send Login OTP",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": { "raw": "http://localhost:4000/api/v1/auth/login/send-otp", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["api", "v1", "auth", "login", "send-otp"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"user@example.com\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Auth - Verify OTP (Get Token)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": { "raw": "http://localhost:4000/api/v1/auth/verify-otp", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["api", "v1", "auth", "verify-otp"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"user@example.com\",\n  \"otp\": \"123456\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Admin - Create Plan",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{ADMIN_TOKEN}}" }
+        ],
+        "url": { "raw": "http://localhost:4000/api/v1/admin/subscription-plans", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["api", "v1", "admin", "subscription-plans"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Basic 5\",\n  \"description\": \"5 sessions plan\",\n  \"sessionsPerMonth\": 5,\n  \"sessionsPerWeek\": 2,\n  \"price\": 500,\n  \"currency\": \"EGP\",\n  \"features\": [\"Feature A\", \"Feature B\"],\n  \"duration\": 30\n}"
+        }
+      }
+    },
+    {
+      "name": "User - Subscribe to Plan",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{USER_TOKEN}}" }
+        ],
+        "url": { "raw": "http://localhost:4000/api/v1/user/subscriptions", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["api", "v1", "user", "subscriptions"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"subscriptionPlanId\": \"{{PLAN_ID}}\",\n  \"startDate\": \"2025-09-10\"\n}"
+        }
+      }
+    },
+    {
+      "name": "User - Create Single Session",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{USER_TOKEN}}" }
+        ],
+        "url": { "raw": "http://localhost:4000/api/v1/user/sessions", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["api", "v1", "user", "sessions"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"subscriptionId\": \"{{SUBSCRIPTION_ID}}\",\n  \"date\": \"2025-09-14\",\n  \"time\": \"09:00\",\n  \"notes\": \"الحصة الأولى\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Public - List Active Plans",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:4000/api/v1/plans",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "v1", "plans"]
+        }
+      }
+    },
+    {
+      "name": "User - Create Single Session #2",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{USER_TOKEN}}" }
+        ],
+        "url": { "raw": "http://localhost:4000/api/v1/user/sessions", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["api", "v1", "user", "sessions"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"subscriptionId\": \"{{SUBSCRIPTION_ID}}\",\n  \"date\": \"2025-09-15\",\n  \"time\": \"17:00\",\n  \"notes\": \"الحصة الثانية\"\n}"
+        }
+      }
+    },
+    {
+      "name": "User - Create Single Session #3",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{USER_TOKEN}}" }
+        ],
+        "url": { "raw": "http://localhost:4000/api/v1/user/sessions", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["api", "v1", "user", "sessions"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"subscriptionId\": \"{{SUBSCRIPTION_ID}}\",\n  \"date\": \"2025-09-18\",\n  \"time\": \"10:30\",\n  \"notes\": \"الحصة الثالثة\"\n}"
+        }
+      }
+    },
+    {
+      "name": "User - Create Single Session #4",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{USER_TOKEN}}" }
+        ],
+        "url": { "raw": "http://localhost:4000/api/v1/user/sessions", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["api", "v1", "user", "sessions"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"subscriptionId\": \"{{SUBSCRIPTION_ID}}\",\n  \"date\": \"2025-09-21\",\n  \"time\": \"09:00\",\n  \"notes\": \"الحصة الرابعة\"\n}"
+        }
+      }
+    },
+    {
+      "name": "User - Create Single Session #5",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{USER_TOKEN}}" }
+        ],
+        "url": { "raw": "http://localhost:4000/api/v1/user/sessions", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["api", "v1", "user", "sessions"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"subscriptionId\": \"{{SUBSCRIPTION_ID}}\",\n  \"date\": \"2025-09-24\",\n  \"time\": \"18:00\",\n  \"notes\": \"الحصة الخامسة\"\n}"
+        }
+      }
+    }
+  ],
+  "variable": [
+    { "key": "ADMIN_TOKEN", "value": "" },
+    { "key": "USER_TOKEN", "value": "" },
+    { "key": "PLAN_ID", "value": "" },
+    { "key": "SUBSCRIPTION_ID", "value": "" }
+  ]
+}

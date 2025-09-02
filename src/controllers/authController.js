@@ -68,7 +68,6 @@ export const sendEmailVerification = asyncWrapper(async (req, res, next) => {
       },
     });
   } catch (error) {
-    console.error("Error in sendEmailVerification:", error);
     return next(
       new AppError(
         "Failed to send verification code. Please try again.",
@@ -253,7 +252,6 @@ export const completeRegistration = asyncWrapper(async (req, res, next) => {
     },
   });
 });
-
 
 // =====================
 // Login with OTP (Passwordless)

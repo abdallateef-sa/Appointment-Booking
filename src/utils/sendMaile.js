@@ -17,6 +17,7 @@ const SendEmail = async (Options) => {
     subject: Options.subject,
     html: Options.html,
     text: Options.text,
+    attachments: Options.attachments || undefined,
   };
 
   try {

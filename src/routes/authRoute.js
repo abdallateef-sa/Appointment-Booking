@@ -1,5 +1,10 @@
 import express from "express";
-import {sendEmailVerification,verifyOtp,completeRegistration,sendLoginOtp,} from "../controllers/authController.js";
+import {
+  sendEmailVerification,
+  verifyOtp,
+  completeRegistration,
+  sendLoginOtp,
+} from "../controllers/authController.js";
 import verifyToken from "../middlewares/verifyToken.js";
 import {
   validateSendOtp,
