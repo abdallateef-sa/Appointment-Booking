@@ -44,146 +44,260 @@ Base URL: /api/v1
   - Sends verification OTP email and returns a short-lived token for step 2.
 - POST /auth/verify-otp
   - Body: { email, otp }
-  - Verifies OTP; returns a token to complete registration.
-- POST /auth/complete-registration (requires Bearer token from verify-otp)
-  - Body: { name, phone }
-  - Completes profile and issues a JWT.
-- POST /auth/login/send-otp
-  - Body: { email }
-  - Sends login OTP and returns JWT after validation (flow handled in controller).
+  # Appointment Booking API
 
-### Profile
-- GET /profile (auth)
-  - Returns current user profile.
+  A clean REST API for subscriptions and session booking. Built with Node.js/Express and MongoDB. Supports passwordless OTP login, admin-managed plans, user subscriptions, single-session scheduling with constraints, and confirmation emails with ICS calendar attachments.
 
-### Admin
-All require Bearer token for an admin user.
+  ## Tech Stack
+  - Node.js, Express, MongoDB (Mongoose)
+  - JWT authentication, express-validator
+  - Nodemailer (HTML templates + ICS attachments)
+  - CORS, morgan
 
-- POST /admin/subscription-plans
-  - Create a plan. Fields include name, price, duration (months), sessionsPerMonth, sessionsPerWeek, status.
-- GET /admin/subscription-plans
-  - List all plans (with pagination in controller, if present in your version).
-- GET /admin/subscription-plans/:id
-  - Get plan by id.
-- PUT /admin/subscription-plans/:id
-  - Update plan.
-- DELETE /admin/subscription-plans/:id
-  - Delete plan.
-- PATCH /admin/subscription-plans/:id/toggle
-  - Toggle plan active/inactive.
-- GET /admin/subscriptions
-  - List all subscriptions. Optional query: status, user, plan, startDateFrom, startDateTo. (Pagination removed.)
-- GET /admin/sessions
-  - List all sessions. Optional query: status, user, subscription, dateFrom, dateTo. (Pagination removed.)
+  ## Project Structure
+  ```
+  src/
+    server.js
+    config/db.js
+    routes/ (indexRoute, authRoute, adminRoute, userRoute, profileRoute)
+    controllers/ (auth, subscriptionPlan, subscription, session, public, adminView, userView)
+    models/ (user, subscriptionPlan, subscription, session)
+    middlewares/ (verifyToken, requireAdmin, errorMiddleware, asyncWrapper)
+    utils/ (sendMaile, emailTemplates, httpStatusText, appError, validators)
+  ```
 
-### User
-All require Bearer token for a normal user.
+  ## Environment (.env)
+  | Name | Required | Example | Notes |
+  |------|----------|---------|-------|
+  | PORT | No | 4000 | Defaults to 4000 |
+  | MONGODB_URL | Yes | mongodb+srv://... | Connection string |
+  | JWT_SECRET | Yes | supersecret | JWT signing secret |
+  | JWT_EXPIRES_IN | No | 7d | JWT lifetime |
+  | EMAIL_HOST | Yes | smtp.example.com | SMTP host |
+  | EMAIL_PORT | Yes | 587 | 465 for SSL |
+  | EMAIL_USER | Yes | user | SMTP user |
+  | EMAIL_PASSWORD | Yes | pass | SMTP password |
+  | EMAIL_FROM | Yes | Appointment Booking <no-reply@example.com> | From address |
+  | NODE_ENV | No | development | Enables morgan in dev |
 
-- POST /user/subscriptions
-  - Subscribe to a plan.
-  - Body: { subscriptionPlanId, startDate }
-  - Enforces one active subscription per plan and only active plans.
-- POST /user/sessions
-  - Create a single session.
-  - Body: { subscriptionId, date, time, notes? }
-  - Constraints:
-    - Within subscription window (startDate..endDate)
-    - Not in the past
-    - No conflict with existing user sessions at the same time
-    - Weekly cap (sessionsPerWeek)
-    - Total cap (sessionsPerMonth)
-  - When subscription reaches total sessions, sends a confirmation email with an ICS file containing all sessions.
-- GET /user/subscriptions
-  - List current user subscriptions. Optional query: status. (Pagination removed.)
-- GET /user/sessions
-  - List current user sessions. Optional query: status, dateFrom, dateTo. (Pagination removed.)
+  ## Run
+  - Dev: `npm run start:dev`
+  - Prod: `npm run start:prod`
 
-## Examples
+  Logs: "MongoDB Connected" after DB connect, and "server run on port <PORT>" on start.
 
-### Public: List Active Plans
-Request:
-  GET /api/v1/plans
-Response 200:
-{
-  "status": "success",
-  "data": [
-    { "_id": "66f1...", "name": "Gold", "price": 500, "currency": "EGP", "isActive": true, "sessionsPerMonth": 8, "sessionsPerWeek": 3, "duration": 30 }
-  ]
-}
+  ## Conventions
+  | Item | Value |
+  |------|-------|
+  | Base URL | `/api/v1` |
+  | Auth header | `Authorization: Bearer <token>` |
+  | Content type | `application/json` |
+  | Date format (input) | `YYYY-MM-DD` |
+  | Time format (input) | `HH:mm` (24h) |
+  | ICS timezone | UTC (Z) |
 
-### Auth Flow (Registration)
-1) Send OTP
-  POST /api/v1/auth/send-otp
-  Body:
-  { "email": "user@example.com" }
-  Response 200: { "status": "success", "message": "OTP sent" }
+  ## Error Shape
+  | Field | Type | Example |
+  |-------|------|---------|
+  | status | string | "fail" or "error" |
+  | message | string | "Validation error" |
+  | errors? | array | optional validation details |
 
-2) Verify OTP
-  POST /api/v1/auth/verify-otp
-  Body:
-  { "email": "user@example.com", "otp": "123456" }
-  Response 200: { "status": "success", "token": "<temp-token>" }
+  ## Data Models (summary)
 
-3) Complete Registration
-  POST /api/v1/auth/complete-registration
-  Headers: Authorization: Bearer <temp-token>
-  Body:
-  { "name": "Ahmed Ali", "phone": "+201234567890" }
-  Response 200: { "status": "success", "token": "<jwt>" }
+  SubscriptionPlan
+  | Field | Type | Notes |
+  |-------|------|-------|
+  | name | string | required |
+  | description | string | optional |
+  | sessionsPerMonth | number | total sessions per subscription |
+  | sessionsPerWeek | number | weekly cap |
+  | price | number | plan price |
+  | currency | enum | EGP/USD/EUR |
+  | duration | number | days (e.g., 30) |
+  | isActive | boolean | default true |
+  | createdBy | ObjectId(Admin) | required |
 
-### Admin: Create Subscription Plan
-Request:
-  POST /api/v1/admin/subscription-plans
-  Headers: Authorization: Bearer <admin-jwt>
-  Body:
-  {
-    "name": "Silver",
-    "description": "Good balance",
-    "sessionsPerMonth": 6,
-    "sessionsPerWeek": 2,
-    "price": 300,
-    "currency": "EGP",
-    "duration": 30
-  }
-Response 201:
-{ "status": "success", "data": { "_id": "66f1...", "name": "Silver", "isActive": true, "createdBy": "66f0..." } }
+  Subscription
+  | Field | Type | Notes |
+  |-------|------|-------|
+  | user | ObjectId(User) | required |
+  | subscriptionPlan | ObjectId(SubscriptionPlan) | required |
+  | startDate | Date | required |
+  | endDate | Date | required |
+  | status | enum | active/cancelled/expired |
+  | totalSessions | number | from plan.sessionsPerMonth |
+  | sessionsUsed | number | increment on booking |
+  | sessionsRemaining (virtual) | number | total - used |
 
-### Admin: List Sessions (filtered)
-Request:
-  GET /api/v1/admin/sessions?status=scheduled&dateFrom=2025-09-01&dateTo=2025-09-30
-  Headers: Authorization: Bearer <admin-jwt>
-Response 200:
-{ "status": "success", "data": [ { "_id": "66f2...", "startsAt": "2025-09-10T15:00:00.000Z", "status": "scheduled", "user": {"_id":"...","name":"Ahmed","email":"user@example.com"}, "subscription": {"_id":"...","subscriptionPlan":{"_id":"...","name":"Silver"}} } ] }
+  Session
+  | Field | Type | Notes |
+  |-------|------|-------|
+  | subscription | ObjectId(Subscription) | required |
+  | user | ObjectId(User) | required |
+  | startsAt | Date | required, unique per (user, startsAt) |
+  | status | enum | scheduled/completed/cancelled/missed |
+  | notes | string | optional |
 
-### User: Subscribe to Plan
-Request:
-  POST /api/v1/user/subscriptions
-  Headers: Authorization: Bearer <jwt>
-  Body:
-  { "subscriptionPlanId": "66f1...", "startDate": "2025-09-05" }
-Response 201:
-{
-  "status": "success",
-  "message": "Subscribed successfully",
-  "data": {
-    "subscription": {
-      "id": "66f3...",
-      "planName": "Silver",
-      "startDate": "2025-09-05T00:00:00.000Z",
-      "endDate": "2025-10-05T00:00:00.000Z",
-      "totalSessions": 6,
-      "sessionsRemaining": 6,
-      "status": "active"
-    }
-  }
-}
+  ## API Summary
 
-### User: Create Session (single)
-Request:
-  POST /api/v1/user/sessions
-  Headers: Authorization: Bearer <jwt>
-  Body:
-  { "subscriptionId": "66f3...", "date": "2025-09-10", "time": "15:00", "notes": "Zoom" }
+  | Method | Path | Auth | Role | Description |
+  |--------|------|------|------|-------------|
+  | GET | /plans | No | - | List active plans |
+  | POST | /auth/send-otp | No | - | Send OTP to email |
+  | POST | /auth/verify-otp | No | - | Verify OTP (returns temporary token) |
+  | POST | /auth/complete-registration | Yes | User | Complete profile (returns JWT) |
+  | POST | /auth/login/send-otp | No | - | Login via OTP (returns JWT) |
+  | GET | /profile | Yes | User/Admin | Current user profile |
+  | POST | /admin/subscription-plans | Yes | Admin | Create plan |
+  | GET | /admin/subscription-plans | Yes | Admin | List plans |
+  | GET | /admin/subscription-plans/:id | Yes | Admin | Get plan |
+  | PUT | /admin/subscription-plans/:id | Yes | Admin | Update plan |
+  | DELETE | /admin/subscription-plans/:id | Yes | Admin | Delete plan |
+  | PATCH | /admin/subscription-plans/:id/toggle | Yes | Admin | Toggle active |
+  | GET | /admin/subscriptions | Yes | Admin | List subscriptions (filters supported) |
+  | GET | /admin/sessions | Yes | Admin | List sessions (filters supported) |
+  | POST | /user/subscriptions | Yes | User | Subscribe to plan |
+  | GET | /user/subscriptions | Yes | User | My subscriptions |
+  | POST | /user/sessions | Yes | User | Create single session |
+  | GET | /user/sessions | Yes | User | My sessions |
+
+  ---
+
+  ## Endpoint Details
+
+  ### Public: GET /plans
+  | Key | Value |
+  |-----|-------|
+  | Auth | None |
+  | Query | - |
+  | Response 200 | `{ status: "success", data: Plan[] }` |
+
+  Plan (response fields)
+  | Field | Type |
+  |-------|------|
+  | _id | string |
+  | name | string |
+  | description | string |
+  | sessionsPerMonth | number |
+  | sessionsPerWeek | number |
+  | price | number |
+  | currency | string |
+  | duration | number |
+
+  ### Auth: POST /auth/send-otp
+  | Key | Value |
+  |-----|-------|
+  | Auth | None |
+  | Body | `{ email: string }` |
+  | Response 200 | `{ status: "success", message: "OTP sent" }` |
+
+  ### Auth: POST /auth/verify-otp
+  | Key | Value |
+  |-----|-------|
+  | Auth | None |
+  | Body | `{ email: string, otp: string }` |
+  | Response 200 | `{ status: "success", token: string }` (temporary for next step) |
+
+  ### Auth: POST /auth/complete-registration
+  | Key | Value |
+  |-----|-------|
+  | Auth | Bearer (temporary token from verify-otp) |
+  | Body | `{ name: string, phone: string }` |
+  | Response 200 | `{ status: "success", token: string }` (final JWT) |
+
+  ### Auth: POST /auth/login/send-otp
+  | Key | Value |
+  |-----|-------|
+  | Auth | None |
+  | Body | `{ email: string }` |
+  | Response 200 | `{ status: "success", token: string }` (JWT) |
+
+  ### Profile: GET /profile
+  | Key | Value |
+  |-----|-------|
+  | Auth | Bearer JWT |
+  | Response 200 | `{ status: "success", data: User }` |
+
+  ### Admin: Plans CRUD
+  POST /admin/subscription-plans
+  | Body field | Type | Required |
+  |------------|------|----------|
+  | name | string | Yes |
+  | description | string | No |
+  | sessionsPerMonth | number | Yes |
+  | sessionsPerWeek | number | Yes |
+  | price | number | Yes |
+  | currency | enum(EGP,USD,EUR) | No |
+  | duration | number (days) | No (default 30) |
+
+  Other admin endpoints use `:id` as path param and return the plan object.
+
+  ### Admin: GET /admin/subscriptions
+  | Key | Value |
+  |-----|-------|
+  | Auth | Bearer (Admin) |
+  | Query | `status=active|cancelled|expired`, `user=<userId>`, `plan=<planId>`, `startDateFrom=YYYY-MM-DD`, `startDateTo=YYYY-MM-DD` |
+  | Response 200 | `{ status: "success", data: Subscription[] }` (user and plan populated) |
+
+  ### Admin: GET /admin/sessions
+  | Key | Value |
+  |-----|-------|
+  | Auth | Bearer (Admin) |
+  | Query | `status=scheduled|completed|cancelled|missed`, `user=<userId>`, `subscription=<subId>`, `dateFrom`, `dateTo` |
+  | Response 200 | `{ status: "success", data: Session[] }` (user and subscription.plan populated) |
+
+  ### User: POST /user/subscriptions
+  | Key | Value |
+  |-----|-------|
+  | Auth | Bearer (User) |
+  | Body | `{ subscriptionPlanId: string, startDate: YYYY-MM-DD }` |
+  | Response 201 | `{ status, message, data: { subscription: { id, planName, startDate, endDate, totalSessions, sessionsRemaining, status } } }` |
+
+  ### User: GET /user/subscriptions
+  | Key | Value |
+  |-----|-------|
+  | Auth | Bearer (User) |
+  | Query | `status` (optional) |
+  | Response 200 | `{ status: "success", data: Subscription[] }` |
+
+  ### User: POST /user/sessions
+  | Key | Value |
+  |-----|-------|
+  | Auth | Bearer (User) |
+  | Body | `{ subscriptionId: string, date: YYYY-MM-DD, time: HH:mm, notes?: string }` |
+  | Constraints | Within subscription window; not in past; no conflicts; respects sessionsPerWeek and total sessions |
+  | Response 201 | `{ status, message, data: { session: { id, startsAt, status, notes }, sessionsRemaining } }` |
+  | Email | When all sessions are scheduled, a confirmation email is sent with an ICS file containing all sessions (UTC, 60 min default) |
+
+  ### User: GET /user/sessions
+  | Key | Value |
+  |-----|-------|
+  | Auth | Bearer (User) |
+  | Query | `status`, `dateFrom`, `dateTo` (optional) |
+  | Response 200 | `{ status: "success", data: Session[] }` |
+
+  ## Email & ICS
+  | Item | Details |
+  |------|---------|
+  | Templates | `src/utils/emailTemplates.js` |
+  | Confirmation | `generateSessionsConfirmedTemplates` |
+  | ICS generator | `buildIcsForSessions` (VEVENT per session, UTC, 60 min) |
+  | Sender | `src/utils/sendMaile.js` supports attachments |
+
+  ## Security & Validation
+  | Topic | Details |
+  |------|---------|
+  | Auth | `verifyToken` checks JWT; admin routes also use `requireAdmin` |
+  | Validation | `express-validator` used in `utils/validators` |
+
+  ## Notes for Frontend
+  | Topic | Guidance |
+  |------|----------|
+  | Dates/Times | Send `date` (YYYY-MM-DD) and `time` (HH:mm). Server converts to Date; ICS sent in UTC. |
+  | Booking UX | Guide user to stay within start/end window and weekly/total caps; handle 409 conflict errors. |
+  | Tokens | After registration completion or login, store JWT and send as `Authorization` header. |
+  | Lists | Admin listing endpoints do not paginate; add client-side paging if needed. |
 Response 201:
 {
   "status": "success",
