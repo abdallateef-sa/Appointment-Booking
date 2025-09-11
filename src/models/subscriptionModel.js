@@ -1,31 +1,158 @@
 import mongoose from "mongoose";
 
-const subscriptionSchema = new mongoose.Schema(
+const sessionSlotSchema = new mongoose.Schema(
   {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    date: { type: String, required: true }, // "2025-01-15"
+    time: { type: String, required: true }, // "14:30"
+    startsAt: { type: Date, required: true }, // computed from date + time
+    status: {
+      type: String,
+      enum: ["scheduled", "completed", "cancelled", "missed"],
+      default: "scheduled",
+    },
+    notes: { type: String, trim: true },
+  },
+  { _id: true }
+);
+
+const completeSubscriptionSchema = new mongoose.Schema(
+  {
+    // User Information
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    userEmail: {
+      type: String,
+      required: true,
+    },
+
+    // Subscription Plan Information
     subscriptionPlan: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "SubscriptionPlan",
       required: true,
     },
-    startDate: { type: Date, required: true },
-    endDate: { type: Date, required: true },
+    planName: {
+      type: String,
+      required: true,
+    },
+    planPrice: {
+      type: Number,
+      required: true,
+    },
+    planCurrency: {
+      type: String,
+      default: "EGP",
+    },
+
+    // Subscription Dates
+    startDate: {
+      type: Date,
+      required: true,
+    },
+    endDate: {
+      type: Date,
+      required: true,
+    },
+
+    // Session Information
+    totalSessions: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
+    sessionsPerWeek: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
+
+    // All Scheduled Sessions
+    sessions: [sessionSlotSchema],
+
+    // Status
     status: {
       type: String,
-      enum: ["active", "cancelled", "expired"],
-      default: "active",
+      enum: [
+        "pending",
+        "confirmed",
+        "active",
+        "completed",
+        "cancelled",
+        "expired",
+      ],
+      default: "confirmed", // Since all sessions are booked at once
     },
-    totalSessions: { type: Number, required: true, min: 1 },
-    sessionsUsed: { type: Number, default: 0, min: 0 },
+
+    // Payment Status (optional for future)
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "paid", "failed", "refunded"],
+      default: "pending",
+    },
+
+    // Additional Notes
+    notes: {
+      type: String,
+      trim: true,
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
 );
 
-subscriptionSchema.virtual("sessionsRemaining").get(function () {
-  return Math.max(this.totalSessions - this.sessionsUsed, 0);
+// Virtual for sessions completed
+completeSubscriptionSchema.virtual("sessionsCompleted").get(function () {
+  return this.sessions.filter(
+    (session) => session.status === "completed"
+  ).length;
 });
 
-subscriptionSchema.index({ user: 1, subscriptionPlan: 1, status: 1 });
+// Virtual for sessions remaining
+completeSubscriptionSchema.virtual("sessionsRemaining").get(function () {
+  return this.sessions.filter(
+    (session) => session.status === "scheduled" || session.status === "missed"
+  ).length;
+});
 
-const Subscription = mongoose.model("Subscription", subscriptionSchema);
-export default Subscription;
+// Virtual for next session
+completeSubscriptionSchema.virtual("nextSession").get(function () {
+  const now = new Date();
+  const upcomingSessions = this.sessions
+    .filter(
+      (session) => session.status === "scheduled" && session.startsAt > now
+    )
+    .sort((a, b) => a.startsAt - b.startsAt);
+
+  return upcomingSessions.length > 0 ? upcomingSessions[0] : null;
+});
+
+// Indexes
+completeSubscriptionSchema.index({ user: 1, status: 1 });
+completeSubscriptionSchema.index({ userEmail: 1 });
+completeSubscriptionSchema.index({ "sessions.startsAt": 1 });
+completeSubscriptionSchema.index({ startDate: 1, endDate: 1 });
+
+// Pre-save middleware to ensure startsAt is computed correctly
+completeSubscriptionSchema.pre("save", function (next) {
+  this.sessions.forEach((session) => {
+    if (session.date && session.time) {
+      const [hours, minutes] = session.time.split(":").map(Number);
+      const startsAt = new Date(session.date);
+      startsAt.setHours(hours, minutes, 0, 0);
+      session.startsAt = startsAt;
+    }
+  });
+  next();
+});
+
+const CompleteSubscription = mongoose.model(
+  "CompleteSubscription",
+  completeSubscriptionSchema
+);
+export default CompleteSubscription;

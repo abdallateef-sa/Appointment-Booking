@@ -13,7 +13,7 @@ import {
   updateSubscriptionPlan,
   deleteSubscriptionPlan,
   toggleSubscriptionPlanStatus,
-} from "../controllers/subscriptionPlanController.js";
+} from "../controllers/planController.js";
 import verifyToken from "../middlewares/verifyToken.js";
 import requireAdmin from "../middlewares/requireAdmin.js";
 import {
@@ -27,11 +27,21 @@ import {
   validateCreateSubscriptionPlan,
   validateUpdateSubscriptionPlan,
   validateSubscriptionPlanId,
-} from "../utils/validators/subscriptionPlanValidators.js";
+} from "../utils/validators/planValidators.js";
 import {
-  adminListSubscriptions,
-  adminListSessions,
-} from "../controllers/adminViewController.js";
+  getAllCompleteSubscriptions,
+  getCompleteSubscriptionById,
+  updateCompleteSubscriptionStatus,
+  updateSessionStatusAdmin,
+  deleteCompleteSubscription,
+  getCompleteSubscriptionStats,
+} from "../controllers/adminSubscriptionController.js";
+import {
+  validateCompleteSubscriptionId,
+  validateSessionId,
+  validateUpdateSessionStatus,
+  handleCompleteSubscriptionValidation,
+} from "../utils/validators/subscriptionValidators.js";
 
 const router = Router();
 
@@ -109,8 +119,57 @@ router.patch(
   toggleSubscriptionPlanStatus
 );
 
-// Admin views: list all subscriptions and sessions
-router.get("/subscriptions", verifyToken, requireAdmin, adminListSubscriptions);
-router.get("/sessions", verifyToken, requireAdmin, adminListSessions);
+// Complete Subscriptions Management Routes
+router.get(
+  "/complete-subscriptions/stats",
+  verifyToken,
+  requireAdmin,
+  getCompleteSubscriptionStats
+);
+
+router.get(
+  "/complete-subscriptions",
+  verifyToken,
+  requireAdmin,
+  getAllCompleteSubscriptions
+);
+
+router.get(
+  "/complete-subscriptions/:id",
+  verifyToken,
+  requireAdmin,
+  validateCompleteSubscriptionId,
+  handleCompleteSubscriptionValidation,
+  getCompleteSubscriptionById
+);
+
+router.patch(
+  "/complete-subscriptions/:id/status",
+  verifyToken,
+  requireAdmin,
+  validateCompleteSubscriptionId,
+  handleCompleteSubscriptionValidation,
+  updateCompleteSubscriptionStatus
+);
+
+router.patch(
+  "/complete-subscriptions/:id/sessions/:sessionId",
+  verifyToken,
+  requireAdmin,
+  validateCompleteSubscriptionId,
+  validateSessionId,
+  validateUpdateSessionStatus,
+  handleCompleteSubscriptionValidation,
+  updateSessionStatusAdmin
+);
+
+router.delete(
+  "/complete-subscriptions/:id",
+  verifyToken,
+  requireAdmin,
+  validateCompleteSubscriptionId,
+  handleCompleteSubscriptionValidation,
+  deleteCompleteSubscription
+);
 
 export default router;

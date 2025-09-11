@@ -1,4 +1,4 @@
-import SubscriptionPlan from "../models/subscriptionPlanModel.js";
+import SubscriptionPlan from "../models/planModel.js";
 import httpStatusText from "../utils/httpStatusText.js";
 import AppError from "../utils/appError.js";
 import asyncWrapper from "../middlewares/asyncWrapper.js";

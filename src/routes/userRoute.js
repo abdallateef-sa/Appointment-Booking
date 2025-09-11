@@ -1,37 +1,25 @@
 import { Router } from "express";
 import verifyToken from "../middlewares/verifyToken.js";
-import { subscribeToPlan } from "../controllers/subscriptionController.js";
-import { handleValidationErrors } from "../utils/validators/authValidators.js";
 import {
-  validateSubscribeToPlan,
-  validateCreateSession,
+  createCompleteSubscription,
+  getMyCompleteSubscriptions,
+} from "../controllers/subscriptionController.js";
+import {
+  validateCreateCompleteSubscription,
+  handleCompleteSubscriptionValidation,
 } from "../utils/validators/subscriptionValidators.js";
-import { createSession } from "../controllers/sessionController.js";
-import {
-  mySubscriptions,
-  mySessions,
-} from "../controllers/userViewController.js";
 
 const router = Router();
 
+// Complete Subscription (New Simple Flow)
 router.post(
-  "/subscriptions",
+  "/complete-subscription",
   verifyToken,
-  validateSubscribeToPlan,
-  handleValidationErrors,
-  subscribeToPlan
+  validateCreateCompleteSubscription,
+  handleCompleteSubscriptionValidation,
+  createCompleteSubscription
 );
 
-router.post(
-  "/sessions",
-  verifyToken,
-  validateCreateSession,
-  handleValidationErrors,
-  createSession
-);
-
-// User views: my subscriptions and my sessions
-router.get("/subscriptions", verifyToken, mySubscriptions);
-router.get("/sessions", verifyToken, mySessions);
+router.get("/complete-subscriptions", verifyToken, getMyCompleteSubscriptions);
 
 export default router;

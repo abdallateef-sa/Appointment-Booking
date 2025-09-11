@@ -1,6 +1,5 @@
 import { Router } from "express";
 import authRoute from "./authRoute.js";
-import profileRoute from "./profileRoute.js";
 import adminRoute from "./adminRoute.js";
 import userRoute from "./userRoute.js";
 import { listActivePlans } from "../controllers/publicController.js";
@@ -8,7 +7,6 @@ import { listActivePlans } from "../controllers/publicController.js";
 const router = Router();
 
 router.use("/auth", authRoute);
-router.use("/profile", profileRoute);
 router.use("/admin", adminRoute);
 router.use("/user", userRoute);
 
