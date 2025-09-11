@@ -224,10 +224,15 @@ export const createCompleteSubscription = asyncWrapper(
         .map((s) => s.startsAt)
         .sort((a, b) => a - b);
 
+      // Use firstName if available, otherwise fallback to email part
+      const userName = req.user.firstName || req.user.email.split("@")[0];
+
       const { html, text } = generateSessionsConfirmedTemplates({
-        recipientName: req.user.name || "User",
+        recipientName: userName,
         planName: plan.name,
         totalSessions: plan.sessionsPerMonth,
+        planPrice: plan.price,
+        planCurrency: plan.currency || "USD",
         startsAtList: sortedSessions,
       });
 
@@ -238,7 +243,7 @@ export const createCompleteSubscription = asyncWrapper(
         planName: plan.name,
         events: sortedSessions.map((startsAt) => ({
           startsAt,
-          durationMinutes: 60,
+          durationMinutes: 30,
         })),
       });
 

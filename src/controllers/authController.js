@@ -134,6 +134,8 @@ export const verifyOtp = asyncWrapper(async (req, res, next) => {
       email: foundUser.email,
       id: foundUser._id,
       role: foundUser.role,
+      firstName: foundUser.firstName,
+      lastName: foundUser.lastName,
     });
 
     return res.status(200).json({
@@ -232,6 +234,8 @@ export const completeRegistration = asyncWrapper(async (req, res, next) => {
     email: foundUser.email,
     id: foundUser._id,
     role: foundUser.role,
+    firstName: foundUser.firstName,
+    lastName: foundUser.lastName,
   });
 
   // Set token in cookie
