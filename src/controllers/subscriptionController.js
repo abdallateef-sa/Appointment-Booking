@@ -8,6 +8,7 @@ import {
   buildIcsForSessions,
   generateSessionsConfirmedTemplates,
 } from "../utils/emailTemplates.js";
+import { validateSessionSlots } from "./sessionsController.js";
 
 // Helper function to convert date and time strings to Date object
 function toStartsAt(dateStr, timeStr) {
@@ -78,7 +79,19 @@ export const createCompleteSubscription = asyncWrapper(
       );
     }
 
-    // 4. Calculate subscription dates
+    // 4. NEW: Validate session slots (past dates and conflicts)
+    const sessionValidationErrors = await validateSessionSlots(sessions);
+    if (sessionValidationErrors.length > 0) {
+      return next(
+        new AppError(
+          `Session validation failed: ${sessionValidationErrors.join("; ")}`,
+          400,
+          httpStatusText.FAIL
+        )
+      );
+    }
+
+    // 5. Calculate subscription dates
     const start = new Date(startDate);
     const end = new Date(start);
     end.setDate(end.getDate() + plan.duration);
