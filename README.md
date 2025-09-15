@@ -3,6 +3,7 @@
 Simple and direct appointment booking system - users choose a plan and book all appointments in a single form!
 
 ## 🚀 Technologies Used
+
 - **Backend:** Node.js, Express.js
 - **Database:** MongoDB with Mongoose
 - **Authentication:** JWT Token
@@ -10,6 +11,7 @@ Simple and direct appointment booking system - users choose a plan and book all 
 - **Validation:** Express Validator
 
 ## 📁 Simplified Project Structure
+
 ```
 src/
 ├── controllers/
@@ -37,6 +39,7 @@ src/
 ```
 
 ## ⚙️ Environment Setup (.env)
+
 ```env
 PORT=4000
 NODE_ENV=development
@@ -56,6 +59,7 @@ EMAIL_FROM="Appointment Booking <your_email@gmail.com>"
 ```
 
 ## 🏃‍♂️ Running the Project
+
 ```bash
 # Development
 npm run start:dev
@@ -67,6 +71,7 @@ npm run start:prod
 ## 🎯 Simplified System
 
 ### For Regular Users:
+
 1. **View available plans** (no login required)
 2. **Register new account** or login
 3. **Fill out one form only** - choose plan + all appointments
@@ -74,6 +79,7 @@ npm run start:prod
 5. **View their subscriptions**
 
 ### For Admin:
+
 1. **Create and manage plans**
 2. **Monitor all subscriptions**
 3. **View statistics**
@@ -83,12 +89,15 @@ npm run start:prod
 ## 📋 API Endpoints
 
 ### 🔓 Public (no login required)
+
 ```http
 GET /api/v1/plans
 ```
+
 Display all available plans for selection
 
 **Response:**
+
 ```json
 {
   "status": "SUCCESS",
@@ -115,28 +124,55 @@ Display all available plans for selection
 ## 👤 Regular User
 
 ### 1. Authentication
+
 ```http
-POST /api/v1/auth/register
+# Step 1: Send OTP to email for verification (no user created in DB yet)
+POST /api/v1/auth/send-otp
 Content-Type: application/json
 
 {
-  "name": "Ahmed Mohamed",
-  "email": "ahmed@example.com",
-  "password": "password123"
+  "email": "ahmed@example.com"
 }
 ```
 
 ```http
-POST /api/v1/auth/login
+# Step 2: Verify OTP (user created in DB only after successful verification)
+POST /api/v1/auth/verify-otp
 Content-Type: application/json
 
 {
   "email": "ahmed@example.com",
-  "password": "password123"
+  "otp": "123456"
+}
+```
+
+```http
+# Step 3: Complete registration with personal details
+POST /api/v1/auth/complete-registration
+Authorization: Bearer TEMP_TOKEN
+Content-Type: application/json
+
+{
+  "firstName": "Ahmed",
+  "lastName": "Mohamed",
+  "phone": "+201234567890",
+  "gender": "Male",
+  "country": "Egypt"
+}
+```
+
+```http
+# Login (for existing users)
+POST /api/v1/auth/login/send-otp
+Content-Type: application/json
+
+{
+  "email": "ahmed@example.com"
 }
 ```
 
 **Response:**
+
 ```json
 {
   "status": "SUCCESS",
@@ -153,6 +189,7 @@ Content-Type: application/json
 ```
 
 ### 2. Create Complete Subscription (The Only Form)
+
 ```http
 POST /api/v1/user/complete-subscription
 Authorization: Bearer YOUR_TOKEN
@@ -185,6 +222,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "status": "SUCCESS",
@@ -222,12 +260,14 @@ Content-Type: application/json
 ```
 
 ### 3. View User Subscriptions
+
 ```http
 GET /api/v1/user/complete-subscriptions
 Authorization: Bearer YOUR_TOKEN
 ```
 
 **Response:**
+
 ```json
 {
   "status": "SUCCESS",
@@ -264,6 +304,7 @@ Authorization: Bearer YOUR_TOKEN
 ## 👑 Admin
 
 ### 1. Admin Login
+
 ```http
 POST /api/v1/admin/login
 Content-Type: application/json
@@ -275,6 +316,7 @@ Content-Type: application/json
 ```
 
 ### 2. Create New Plan
+
 ```http
 POST /api/v1/admin/subscription-plans
 Authorization: Bearer ADMIN_TOKEN
@@ -293,12 +335,14 @@ Content-Type: application/json
 ```
 
 ### 3. View All Plans
+
 ```http
 GET /api/v1/admin/subscription-plans
 Authorization: Bearer ADMIN_TOKEN
 ```
 
 ### 4. View All Subscriptions
+
 ```http
 GET /api/v1/admin/complete-subscriptions
 Authorization: Bearer ADMIN_TOKEN
@@ -308,12 +352,14 @@ GET /api/v1/admin/complete-subscriptions?status=confirmed&userEmail=ahmed@exampl
 ```
 
 ### 5. Comprehensive Statistics
+
 ```http
 GET /api/v1/admin/complete-subscriptions/stats
 Authorization: Bearer ADMIN_TOKEN
 ```
 
 **Response:**
+
 ```json
 {
   "status": "SUCCESS",
@@ -366,17 +412,17 @@ graph TD
     B --> C[Manage Plans]
     B --> D[Monitor Subscriptions]
     B --> E[View Statistics]
-    
+
     C --> C1[Create New Plan]
     C --> C2[Edit Existing Plan]
     C --> C3[Delete Plan]
     C --> C4[Activate/Deactivate]
-    
+
     D --> D1[View All Subscriptions]
     D --> D2[Filter by Status]
     D --> D3[Search by Email]
     D --> D4[Update Payment Status]
-    
+
     E --> E1[Total Subscriptions]
     E --> E2[Most Popular Plans]
     E --> E3[Payment Statistics]
@@ -388,18 +434,21 @@ graph TD
 ## ✅ System Features
 
 ### 🎯 **For Users:**
+
 - **One form only** - choose plan and book all appointments at once
 - **No complications** - no editing or canceling appointments
 - **Instant confirmation** - confirmation email with calendar file (ICS)
 - **Full transparency** - view all subscriptions and appointments
 
 ### 🛠️ **For Admin:**
+
 - **Comprehensive management** - create and edit plans
 - **Continuous monitoring** - all subscriptions and appointments
 - **Detailed statistics** - comprehensive numbers and reports
 - **Advanced filters** - search and filter by different criteria
 
 ### 🔧 **Technically:**
+
 - **Single database** - each subscription in one document
 - **Automatic validation** - of appointment validity and limits
 - **High security** - JWT authentication and comprehensive validation
@@ -410,6 +459,7 @@ graph TD
 ## 🚀 Getting Started
 
 ### 1. Project Setup:
+
 ```bash
 git clone https://github.com/your-repo/appointment-booking.git
 cd appointment-booking
@@ -417,15 +467,18 @@ npm install
 ```
 
 ### 2. Environment Setup:
+
 - Copy `.env.example` to `.env`
 - Fill in required environment variables
 
 ### 3. Run Project:
+
 ```bash
 npm run start:dev
 ```
 
 ### 4. Test API:
+
 ```bash
 # View plans
 curl http://localhost:4000/api/v1/plans
@@ -441,6 +494,7 @@ curl -X POST http://localhost:4000/api/v1/auth/register \
 ## 🧪 Testing Examples
 
 ### Register New User:
+
 ```bash
 curl -X POST http://localhost:4000/api/v1/auth/register \
   -H "Content-Type: application/json" \
@@ -452,6 +506,7 @@ curl -X POST http://localhost:4000/api/v1/auth/register \
 ```
 
 ### Create Complete Subscription:
+
 ```bash
 curl -X POST http://localhost:4000/api/v1/user/complete-subscription \
   -H "Content-Type: application/json" \
@@ -482,12 +537,14 @@ curl -X POST http://localhost:4000/api/v1/user/complete-subscription \
 ```
 
 ### View User Subscriptions:
+
 ```bash
 curl -X GET http://localhost:4000/api/v1/user/complete-subscriptions \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 ### For Admin - Create New Plan:
+
 ```bash
 curl -X POST http://localhost:4000/api/v1/admin/subscription-plans \
   -H "Content-Type: application/json" \
@@ -507,6 +564,7 @@ curl -X POST http://localhost:4000/api/v1/admin/subscription-plans \
 ## 📊 Data Models
 
 ### Subscription
+
 ```javascript
 {
   user: ObjectId,              // User
@@ -535,6 +593,7 @@ curl -X POST http://localhost:4000/api/v1/admin/subscription-plans \
 ```
 
 ### Plan
+
 ```javascript
 {
   name: String,                // Plan name
@@ -557,16 +616,19 @@ curl -X POST http://localhost:4000/api/v1/admin/subscription-plans \
 ## 🔐 Security and Authentication
 
 ### JWT Token:
+
 - Token is generated upon login
 - Token valid for 7 days by default
 - Must send Token in header: `Authorization: Bearer YOUR_TOKEN`
 
 ### Validation:
+
 - All inputs are validated using express-validator
 - Validation of dates and times
 - Prevent appointment conflicts and check limits
 
 ### Error Handling:
+
 - Clear and helpful error messages
 - Correct HTTP status codes
 - Server error logging

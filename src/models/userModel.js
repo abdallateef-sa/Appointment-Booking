@@ -28,8 +28,6 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    emailVerificationCode: String,
-    emailVerificationExpires: Date,
     // OTP for login (separate from registration OTP)
     loginOtpCode: String,
     loginOtpExpires: Date,

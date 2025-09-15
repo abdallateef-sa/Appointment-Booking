@@ -10,6 +10,29 @@ import {
   generateOtpTextTemplate,
 } from "../utils/emailTemplates.js";
 
+// In-memory storage for temporary OTP verification and email verification (in production use Redis)
+const tempOtpStorage = new Map();
+const verifiedEmailsStorage = new Map(); // Store verified emails temporarily
+
+// Clean expired data every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+
+  // Clean expired OTPs
+  for (const [email, data] of tempOtpStorage.entries()) {
+    if (data.expires < now) {
+      tempOtpStorage.delete(email);
+    }
+  }
+
+  // Clean expired verified emails (expire after 30 minutes)
+  for (const [email, data] of verifiedEmailsStorage.entries()) {
+    if (data.expires < now) {
+      verifiedEmailsStorage.delete(email);
+    }
+  }
+}, 5 * 60 * 1000);
+
 // Step 1: Send OTP to email for verification
 export const sendEmailVerification = asyncWrapper(async (req, res, next) => {
   const { email } = req.body;
@@ -32,21 +55,12 @@ export const sendEmailVerification = asyncWrapper(async (req, res, next) => {
   const hashedOtp = await bcrypt.hash(otp, 10);
 
   try {
-    if (existingUser && !existingUser.emailVerified) {
-      // Update existing user with new OTP
-      existingUser.emailVerificationCode = hashedOtp;
-      existingUser.emailVerificationExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
-      await existingUser.save();
-    } else {
-      // Create new user with email and OTP only
-      const newUser = new user({
-        email,
-        emailVerificationCode: hashedOtp,
-        emailVerificationExpires: Date.now() + 10 * 60 * 1000, // 10 minutes
-        emailVerified: false,
-      });
-      await newUser.save();
-    }
+    // Store OTP temporarily in memory (not in database)
+    tempOtpStorage.set(email, {
+      hashedOtp,
+      expires: Date.now() + 10 * 60 * 1000, // 10 minutes
+      type: "registration",
+    });
 
     // Send OTP email
     const htmlTemplate = generateOtpEmailTemplate(otp, "Valued User");
@@ -68,6 +82,8 @@ export const sendEmailVerification = asyncWrapper(async (req, res, next) => {
       },
     });
   } catch (error) {
+    // Clean up temp storage on error
+    tempOtpStorage.delete(email);
     return next(
       new AppError(
         "Failed to send verification code. Please try again.",
@@ -82,38 +98,36 @@ export const sendEmailVerification = asyncWrapper(async (req, res, next) => {
 export const verifyOtp = asyncWrapper(async (req, res, next) => {
   const { email, otp } = req.body;
 
-  const foundUser = await user.findOne({ email });
-  if (!foundUser) {
-    return next(
-      new AppError("Account not found for this email", 404, httpStatusText.FAIL)
-    );
-  }
+  // Check if user exists in database (for login)
+  const existingUser = await user.findOne({ email });
 
   const now = Date.now();
+  let matchedContext = null;
 
   // Try login OTP first if user is fully registered
-  let matchedContext = null;
   if (
-    foundUser.firstName &&
-    foundUser.loginOtpCode &&
-    foundUser.loginOtpExpires &&
-    foundUser.loginOtpExpires.getTime() > now
+    existingUser &&
+    existingUser.firstName &&
+    existingUser.loginOtpCode &&
+    existingUser.loginOtpExpires &&
+    existingUser.loginOtpExpires.getTime() > now
   ) {
-    const isLoginOtpValid = await bcrypt.compare(otp, foundUser.loginOtpCode);
+    const isLoginOtpValid = await bcrypt.compare(
+      otp,
+      existingUser.loginOtpCode
+    );
     if (isLoginOtpValid) matchedContext = "login";
   }
 
-  // If not login, try registration verification OTP
+  // If not login, check temporary registration OTP storage
   if (!matchedContext) {
+    const tempOtpData = tempOtpStorage.get(email);
     if (
-      foundUser.emailVerificationCode &&
-      foundUser.emailVerificationExpires &&
-      foundUser.emailVerificationExpires.getTime() > now
+      tempOtpData &&
+      tempOtpData.expires > now &&
+      tempOtpData.type === "registration"
     ) {
-      const isRegOtpValid = await bcrypt.compare(
-        otp,
-        foundUser.emailVerificationCode
-      );
+      const isRegOtpValid = await bcrypt.compare(otp, tempOtpData.hashedOtp);
       if (isRegOtpValid) matchedContext = "registration";
     }
   }
@@ -126,16 +140,16 @@ export const verifyOtp = asyncWrapper(async (req, res, next) => {
 
   if (matchedContext === "login") {
     // Clear login OTP and issue full auth token
-    foundUser.loginOtpCode = undefined;
-    foundUser.loginOtpExpires = undefined;
-    await foundUser.save({ validateBeforeSave: false });
+    existingUser.loginOtpCode = undefined;
+    existingUser.loginOtpExpires = undefined;
+    await existingUser.save({ validateBeforeSave: false });
 
     const token = await generateJWT({
-      email: foundUser.email,
-      id: foundUser._id,
-      role: foundUser.role,
-      firstName: foundUser.firstName,
-      lastName: foundUser.lastName,
+      email: existingUser.email,
+      id: existingUser._id,
+      role: existingUser.role,
+      firstName: existingUser.firstName,
+      lastName: existingUser.lastName,
     });
 
     return res.status(200).json({
@@ -145,16 +159,20 @@ export const verifyOtp = asyncWrapper(async (req, res, next) => {
     });
   }
 
-  // Registration verification: mark verified and issue temporary token
-  foundUser.emailVerified = true;
-  foundUser.emailVerificationCode = undefined;
-  foundUser.emailVerificationExpires = undefined;
-  await foundUser.save({ validateBeforeSave: false });
+  // Registration verification: Store verified email in memory (don't create user yet)
+  verifiedEmailsStorage.set(email, {
+    verified: true,
+    expires: Date.now() + 30 * 60 * 1000, // 30 minutes to complete registration
+  });
 
+  // Clear temporary OTP storage
+  tempOtpStorage.delete(email);
+
+  // Create temporary token with email only (no user ID yet)
   const tempToken = await generateJWT({
-    email: foundUser.email,
-    id: foundUser._id,
+    email: email,
     temporary: true,
+    emailVerified: true,
   });
 
   return res.status(200).json({
@@ -162,7 +180,7 @@ export const verifyOtp = asyncWrapper(async (req, res, next) => {
     message:
       "Email verified successfully. You can now complete your registration.",
     data: {
-      email: foundUser.email,
+      email: email,
       emailVerified: true,
       tempToken,
       nextStep: "complete-registration",
@@ -174,84 +192,94 @@ export const verifyOtp = asyncWrapper(async (req, res, next) => {
 export const completeRegistration = asyncWrapper(async (req, res, next) => {
   const { firstName, lastName, phone, gender, country } = req.body;
 
-  // Get user ID from token
-  const userId = req.user.id;
+  // Get email from token (no user ID yet since user doesn't exist in DB)
   const userEmail = req.user.email;
+  const isTemporary = req.user.temporary;
+  const emailVerified = req.user.emailVerified;
 
-  // Find user by ID from token
-  const foundUser = await user.findById(userId);
-
-  if (!foundUser) {
+  // Verify this is a temporary token for registration
+  if (!isTemporary || !emailVerified) {
     return next(
       new AppError(
-        "User not found. Please verify your email first.",
-        404,
-        httpStatusText.FAIL
-      )
-    );
-  }
-
-  if (!foundUser.emailVerified) {
-    return next(
-      new AppError("Please verify your email first", 400, httpStatusText.FAIL)
-    );
-  }
-
-  if (foundUser.firstName) {
-    return next(
-      new AppError(
-        "Registration already completed for this user",
+        "Invalid token. Please verify your email first.",
         400,
         httpStatusText.FAIL
       )
     );
   }
 
-  // Check if phone already exists for another user
-  const existingUserWithPhone = await user.findOne({
-    phone,
-    _id: { $ne: foundUser._id },
-  });
+  // Check if email was verified in memory
+  const verifiedEmailData = verifiedEmailsStorage.get(userEmail);
+  if (!verifiedEmailData || verifiedEmailData.expires < Date.now()) {
+    return next(
+      new AppError(
+        "Email verification expired. Please verify your email again.",
+        400,
+        httpStatusText.FAIL
+      )
+    );
+  }
 
+  // Check if user already exists in database
+  const existingUser = await user.findOne({ email: userEmail });
+  if (existingUser) {
+    return next(
+      new AppError(
+        "Email already registered. Use login instead.",
+        409,
+        httpStatusText.FAIL
+      )
+    );
+  }
+
+  // Check if phone already exists
+  const existingUserWithPhone = await user.findOne({ phone });
   if (existingUserWithPhone) {
     return next(
       new AppError("Phone number already registered", 409, httpStatusText.FAIL)
     );
   }
 
-  // Update user with personal information
-  foundUser.firstName = firstName.trim();
-  foundUser.lastName = lastName.trim();
-  foundUser.phone = phone;
-  foundUser.gender = gender;
-  foundUser.country = country.trim();
-  foundUser.role = "User"; // Default role
-
-  await foundUser.save();
-
-  // Generate authentication token
-  const token = await generateJWT({
-    email: foundUser.email,
-    id: foundUser._id,
-    role: foundUser.role,
-    firstName: foundUser.firstName,
-    lastName: foundUser.lastName,
+  // Create new user in database (ONLY NOW!)
+  const newUser = new user({
+    email: userEmail,
+    emailVerified: true,
+    firstName: firstName.trim(),
+    lastName: lastName.trim(),
+    phone: phone,
+    gender: gender,
+    country: country.trim(),
+    role: "User",
   });
 
-  // Set token in cookie
+  await newUser.save();
+
+  // Clear verified email from memory storage
+  verifiedEmailsStorage.delete(userEmail);
+
+  // Generate final authentication token
+  const token = await generateJWT({
+    email: newUser.email,
+    id: newUser._id,
+    role: newUser.role,
+    firstName: newUser.firstName,
+    lastName: newUser.lastName,
+  });
+
   res.status(201).json({
     status: httpStatusText.SUCCESS,
     message: "Registration completed successfully",
     data: {
+      token,
       user: {
-        id: foundUser._id,
-        firstName: foundUser.firstName,
-        lastName: foundUser.lastName,
-        email: foundUser.email,
-        phone: foundUser.phone,
-        gender: foundUser.gender,
-        country: foundUser.country,
-        role: foundUser.role,
+        id: newUser._id,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        email: newUser.email,
+        phone: newUser.phone,
+        gender: newUser.gender,
+        country: newUser.country,
+        role: newUser.role,
       },
     },
   });
@@ -259,9 +287,7 @@ export const completeRegistration = asyncWrapper(async (req, res, next) => {
 
 // =====================
 // Login with OTP (Passwordless)
-// =====================
-
-// Send OTP for login (existing verified users)
+// =====================// Send OTP for login (existing verified users)
 export const sendLoginOtp = asyncWrapper(async (req, res, next) => {
   const { email } = req.body;
 
