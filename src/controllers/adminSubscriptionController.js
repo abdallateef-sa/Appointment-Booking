@@ -2,20 +2,14 @@ import CompleteSubscription from "../models/subscriptionModel.js";
 import httpStatusText from "../utils/httpStatusText.js";
 import AppError from "../utils/appError.js";
 import asyncWrapper from "../middlewares/asyncWrapper.js";
+import { fromUTC } from "../utils/timezoneUtils.js";
 
 // @desc Get all complete subscriptions (Admin only)
 // @route GET /api/v1/admin/complete-subscriptions
 // @access Private/Admin
 export const getAllCompleteSubscriptions = asyncWrapper(
   async (req, res, next) => {
-    const {
-      page = 1,
-      limit = 10,
-      status,
-      userEmail,
-      planName,
-      sort = "-createdAt",
-    } = req.query;
+    const { status, userEmail, planName, sort = "-createdAt" } = req.query;
 
     // Build filter
     const filter = {};
@@ -23,29 +17,15 @@ export const getAllCompleteSubscriptions = asyncWrapper(
     if (userEmail) filter.userEmail = { $regex: userEmail, $options: "i" };
     if (planName) filter.planName = { $regex: planName, $options: "i" };
 
-    // Calculate pagination
-    const skip = (page - 1) * limit;
-
     const subscriptions = await CompleteSubscription.find(filter)
       .populate("user", "name email phone")
       .populate("subscriptionPlan", "name description")
       .sort(sort)
-      .skip(skip)
-      .limit(parseInt(limit))
       .select("-__v");
-
-    const total = await CompleteSubscription.countDocuments(filter);
 
     res.status(200).json({
       status: httpStatusText.SUCCESS,
       results: subscriptions.length,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(total / limit),
-        totalSubscriptions: total,
-        hasNext: page * limit < total,
-        hasPrev: page > 1,
-      },
       data: {
         subscriptions: subscriptions.map((sub) => ({
           id: sub._id,
@@ -62,6 +42,7 @@ export const getAllCompleteSubscriptions = asyncWrapper(
           status: sub.status,
           paymentStatus: sub.paymentStatus,
           nextSession: sub.nextSession,
+          sessions: sub.sessions,
           createdAt: sub.createdAt,
           updatedAt: sub.updatedAt,
         })),
@@ -76,9 +57,10 @@ export const getAllCompleteSubscriptions = asyncWrapper(
 export const getCompleteSubscriptionById = asyncWrapper(
   async (req, res, next) => {
     const { id } = req.params;
+    const { displayCountry } = req.query; // Optional: for timezone display
 
     const subscription = await CompleteSubscription.findById(id)
-      .populate("user", "name email phone createdAt")
+      .populate("user", "firstName lastName email phone country createdAt")
       .populate("subscriptionPlan")
       .select("-__v");
 
@@ -91,6 +73,9 @@ export const getCompleteSubscriptionById = asyncWrapper(
         )
       );
     }
+
+    // Use query param or user's country for timezone display
+    const userCountry = displayCountry || subscription.user?.country;
 
     res.status(200).json({
       status: httpStatusText.SUCCESS,
@@ -115,14 +100,34 @@ export const getCompleteSubscriptionById = asyncWrapper(
           nextSession: subscription.nextSession,
           createdAt: subscription.createdAt,
           updatedAt: subscription.updatedAt,
-          sessions: subscription.sessions.map((session) => ({
-            id: session._id,
-            date: session.date,
-            time: session.time,
-            startsAt: session.startsAt,
-            status: session.status,
-            notes: session.notes,
-          })),
+          sessions: subscription.sessions.map((session) => {
+            // Convert UTC time to display timezone if available
+            if (session.startsAtUTC && userCountry) {
+              const displayed = fromUTC(session.startsAtUTC, userCountry);
+              return {
+                id: session._id,
+                date: displayed.date,
+                time: displayed.time,
+                startsAtUTC: session.startsAtUTC,
+                displayTime: displayed.formatted,
+                timezone: displayed.timezone,
+                status: session.status,
+                notes: session.notes,
+              };
+            } else {
+              // Fallback for old data format or missing country
+              return {
+                id: session._id,
+                date: session.date || null,
+                time: session.time || null,
+                startsAt: session.startsAt || null, // Legacy field
+                startsAtUTC: session.startsAtUTC || null,
+                status: session.status,
+                notes: session.notes,
+              };
+            }
+          }),
+          displayCountry: userCountry,
         },
       },
     });

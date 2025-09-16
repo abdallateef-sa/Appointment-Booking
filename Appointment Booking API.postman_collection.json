@@ -1,0 +1,1070 @@
+{
+	"info": {
+		"_postman_id": "7bc174dc-4838-4605-af9b-cde71dcaef59",
+		"name": "Appointment Booking API",
+		"description": "Complete API collection for the Appointment Booking System with OTP authentication",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "38461767",
+		"_collection_link": "https://galactic-capsule-846461.postman.co/workspace/Team-Workspace~6fb20c14-7ff4-4a31-8e84-23a45f2df660/collection/38461767-7bc174dc-4838-4605-af9b-cde71dcaef59?action=share&source=collection_link&creator=38461767"
+	},
+	"item": [
+		{
+			"name": "🔓 Public Endpoints",
+			"item": [
+				{
+					"name": "Get All Plans",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/plans",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"plans"
+							]
+						},
+						"description": "Get all available subscription plans (no authentication required)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Countries",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/countries",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"countries"
+							]
+						},
+						"description": "Get all supported countries with timezones"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Popular Countries",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/countries/popular",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"countries",
+								"popular"
+							]
+						},
+						"description": "Get commonly used countries for booking"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Country Timezone",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/countries/United States/timezone",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"countries",
+								"United States",
+								"timezone"
+							]
+						},
+						"description": "Get timezone for a specific country"
+					},
+					"response": []
+				},
+				{
+					"name": "Check Country Support",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/countries/United States/supported",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"countries",
+								"United States",
+								"supported"
+							]
+						},
+						"description": "Check if a country is supported"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Booked Sessions (Timezone-Aware)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/sessions/booked?displayCountry=United States",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"sessions",
+								"booked"
+							],
+							"query": [
+								{
+									"key": "displayCountry",
+									"value": "United States",
+									"description": "Country for timezone display"
+								}
+							]
+						},
+						"description": "Get all booked sessions with timezone conversion"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Available Slots (Timezone-Aware)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/sessions/available?startDate=2025-09-20&endDate=2025-09-20&displayCountry=United States",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"sessions",
+								"available"
+							],
+							"query": [
+								{
+									"key": "startDate",
+									"value": "2025-09-20",
+									"description": "Start date for available slots"
+								},
+								{
+									"key": "endDate",
+									"value": "2025-09-20",
+									"description": "End date (optional)"
+								},
+								{
+									"key": "displayCountry",
+									"value": "United States",
+									"description": "Country for timezone display"
+								}
+							]
+						},
+						"description": "Get available time slots for booking with timezone awareness"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints that don't require authentication"
+		},
+		{
+			"name": "👤 User Authentication (OTP)",
+			"item": [
+				{
+					"name": "1. Send OTP for Registration",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"ashohdy@std.mans.edu.eg\"\n}"
+						},
+						"url": {
+							"raw": "{{URL}}/api/v1/auth/send-otp",
+							"host": [
+								"{{URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"send-otp"
+							]
+						},
+						"description": "Send OTP to email for new user registration"
+					},
+					"response": []
+				},
+				{
+					"name": "2. Verify OTP (Registration)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const json = pm.response.json();",
+									"pm.collectionVariables.set(\"token\", json.data.token);",
+									"pm.collectionVariables.set(\"tempToken\", json.data.tempToken);"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"ashohdy@std.mans.edu.eg\",\n    \"otp\": \"162600\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/verify-otp",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"verify-otp"
+							]
+						},
+						"description": "Verify OTP and get temporary token for completing registration"
+					},
+					"response": []
+				},
+				{
+					"name": "3. Complete Registration",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    console.log('Registration completed successfully!');",
+									"    console.log('User:', response.data.user);",
+									"}"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{tempToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"abdallateef\",\n  \"lastName\": \"shohdy\",\n  \"phone\": \"5123456550\",\n  \"gender\": \"Male\",\n  \"country\": \"United States\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/complete-registration",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"complete-registration"
+							]
+						},
+						"description": "Complete user registration with personal information"
+					},
+					"response": []
+				},
+				{
+					"name": "4. Send Login OTP",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"abdallateefshohdy0180@gmail.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/login/send-otp",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login",
+								"send-otp"
+							]
+						},
+						"description": "Send OTP for login (existing users)"
+					},
+					"response": []
+				},
+				{
+					"name": "5. Verify Login OTP",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const json = pm.response.json();",
+									"pm.collectionVariables.set(\"token\", json.data.token);",
+									"pm.collectionVariables.set(\"tempToken\", json.data.tempToken);"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"abdallateefshohdy0180@gmail.com\",\n  \"otp\": \"827033\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/verify-otp",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"verify-otp"
+							]
+						},
+						"description": "Verify login OTP and get authentication token"
+					},
+					"response": []
+				}
+			],
+			"description": "User authentication endpoints using OTP system"
+		},
+		{
+			"name": "👤 User Operations",
+			"item": [
+				{
+					"name": "Create Complete Subscription",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    if (response.data && response.data.subscription) {",
+									"        pm.environment.set('subscriptionId', response.data.subscription.id);",
+									"        console.log('Subscription created:', response.data.subscription.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"subscriptionPlanId\": \"68c269f3990b42202bf9b8b9\",\n  \"startDate\": \"2025-09-15\",\n  \"sessions\": [\n    {\n      \"date\": \"2025-09-15\",\n      \"time\": \"14:30\",\n      \"notes\": \"First session - user's local time (EST)\"\n    },\n    {\n      \"date\": \"2025-09-17\",\n      \"time\": \"16:00\",\n      \"notes\": \"Second session - user's local time\"\n    },\n    {\n      \"date\": \"2025-09-22\",\n      \"time\": \"14:30\",\n      \"notes\": \"Third session - converted to UTC automatically\"\n    },\n    {\n      \"date\": \"2025-09-24\",\n      \"time\": \"16:00\",\n      \"notes\": \"Final session - timezone aware\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/user/complete-subscription",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"user",
+								"complete-subscription"
+							]
+						},
+						"description": "Create a complete subscription with plan and all sessions. Times entered in user's local timezone will be automatically converted to UTC for storage."
+					},
+					"response": []
+				},
+				{
+					"name": "Get My Subscriptions (Timezone-Aware)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/user/complete-subscriptions?displayCountry=United States",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"user",
+								"complete-subscriptions"
+							],
+							"query": [
+								{
+									"key": "displayCountry",
+									"value": "United States",
+									"description": "Optional: Display times in specific timezone"
+								}
+							]
+						},
+						"description": "Get all subscriptions for the authenticated user with timezone conversion"
+					},
+					"response": []
+				}
+			],
+			"description": "User operations after authentication"
+		},
+		{
+			"name": "👑 Admin Authentication",
+			"item": [
+				{
+					"name": "Admin Register",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"name\": \"abdallateef\",\r\n    \"gender\": \"Male\",\r\n    \"email\": \"abdallateefshohdy0190@gmail.com\",\r\n    \"password\": \"PASS123\",\r\n    \"country\": \"Egypt\",\r\n    \"phone\": \"+201234567890\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{URL}}/api/v1/admin/register",
+							"host": [
+								"{{URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Admin Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const json = pm.response.json();",
+									"pm.collectionVariables.set(\"adminToken\", json.data.token);"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"abdallateefshohdy0190@gmail.com\",\n  \"password\": \"PASS123\"\n}"
+						},
+						"url": {
+							"raw": "{{URL}}/api/v1/admin/login",
+							"host": [
+								"{{URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"login"
+							]
+						},
+						"description": "Admin login with email and password"
+					},
+					"response": []
+				},
+				{
+					"name": "Admin Forgot-Password",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"email\": \"abdallateefshohdy0180@gmail.com\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Local}}/api/v1/admin/forgot-password",
+							"host": [
+								"{{Local}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"forgot-password"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Admin Reset-Password",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"email\": \"abdallateefshohdy0180@gmail.com\",\r\n  \"otp\": \"545320\",\r\n  \"password\": \"PASS123\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{Local}}/api/v1/admin/reset-password",
+							"host": [
+								"{{Local}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"reset-password"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Admin Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{AdminToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{Local}}/api/v1/admin/logout",
+							"host": [
+								"{{Local}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Admin authentication"
+		},
+		{
+			"name": "👑 Admin - Plan Management",
+			"item": [
+				{
+					"name": "Create Plan",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    if (response.data && response.data.plan) {",
+									"        pm.environment.set('planId', response.data.plan._id);",
+									"        console.log('Plan created with ID:', response.data.plan._id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Basic\",\n  \"description\": \"Perfect for beginners\",\n  \"sessionsPerMonth\": 8,\n  \"sessionsPerWeek\": 4,\n  \"price\": 5000,\n  \"currency\": \"EGP\",\n  \"duration\": 30,\n  \"features\": [\"جلسات فردية\", \"دعم email\", \"متابعة أسبوعية\"]\n}"
+						},
+						"url": {
+							"raw": "{{URL}}/api/v1/admin/subscription-plans",
+							"host": [
+								"{{URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"subscription-plans"
+							]
+						},
+						"description": "Create a new subscription plan"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Plans",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/subscription-plans",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"subscription-plans"
+							]
+						},
+						"description": "Get all subscription plans (admin view)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Plan",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"خطة أساسية محدثة\",\n  \"description\": \"4 جلسات شهرياً مع مميزات إضافية\",\n  \"price\": 600\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/subscription-plans/{{planId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"subscription-plans",
+								"{{planId}}"
+							]
+						},
+						"description": "Update an existing plan"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Plan",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/subscription-plans/{{planId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"subscription-plans",
+								"{{planId}}"
+							]
+						},
+						"description": "Delete a subscription plan"
+					},
+					"response": []
+				}
+			],
+			"description": "Admin plan management operations"
+		},
+		{
+			"name": "👑 Admin - Subscription Management",
+			"item": [
+				{
+					"name": "Get All Subscriptions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/complete-subscriptions",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"complete-subscriptions"
+							]
+						},
+						"description": "Get all user subscriptions"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Subscriptions with Filters",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/complete-subscriptions?status=confirmed&page=1&limit=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"complete-subscriptions"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "confirmed"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "userEmail",
+									"value": "ahmed@example.com",
+									"disabled": true
+								},
+								{
+									"key": "paymentStatus",
+									"value": "paid",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Get subscriptions with filters (status, email, payment status, etc.)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Subscription Statistics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/complete-subscriptions/stats",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"complete-subscriptions",
+								"stats"
+							]
+						},
+						"description": "Get comprehensive subscription statistics"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Subscription Status",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"active\",\n  \"paymentStatus\": \"paid\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/admin/complete-subscriptions/{{subscriptionId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"admin",
+								"complete-subscriptions",
+								"{{subscriptionId}}"
+							]
+						},
+						"description": "Update subscription status or payment status"
+					},
+					"response": []
+				}
+			],
+			"description": "Admin subscription management operations"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:4000",
+			"type": "string"
+		},
+		{
+			"key": "userToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "adminToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "tempToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "planId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "subscriptionId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": ""
+		},
+		{
+			"key": "Token",
+			"value": "",
+			"type": "default"
+		},
+		{
+			"key": "URL",
+			"value": "",
+			"type": "default"
+		}
+	]
+}

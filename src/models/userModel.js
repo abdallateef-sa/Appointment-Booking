@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import validator from "validator";
+import { getTimezoneForCountry } from "../utils/countryTimezone.js";
 
 const userSchema = new mongoose.Schema(
   {
@@ -63,7 +64,12 @@ const userSchema = new mongoose.Schema(
       default: "User",
     },
   },
-  { timestamps: true }
+  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );
+
+// Virtual property to get timezone from country
+userSchema.virtual("timezone").get(function () {
+  return getTimezoneForCountry(this.country);
+});
 
 export default mongoose.model("User", userSchema);

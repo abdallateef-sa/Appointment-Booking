@@ -2,9 +2,10 @@ import mongoose from "mongoose";
 
 const sessionSlotSchema = new mongoose.Schema(
   {
-    date: { type: String, required: true }, // "2025-01-15"
-    time: { type: String, required: true }, // "14:30"
-    startsAt: { type: Date, required: true }, // computed from date + time
+    startsAtUTC: { type: Date, required: true }, // UTC time - main storage
+    userLocalDate: { type: String, required: true }, // Original user date "2025-01-15"
+    userLocalTime: { type: String, required: true }, // Original user time "14:30"
+    userCountry: { type: String, required: true }, // User's country for timezone reference
     status: {
       type: String,
       enum: ["scheduled", "completed", "cancelled", "missed"],
@@ -24,6 +25,10 @@ const completeSubscriptionSchema = new mongoose.Schema(
       required: true,
     },
     userEmail: {
+      type: String,
+      required: true,
+    },
+    userCountry: {
       type: String,
       required: true,
     },
@@ -125,9 +130,9 @@ completeSubscriptionSchema.virtual("nextSession").get(function () {
   const now = new Date();
   const upcomingSessions = this.sessions
     .filter(
-      (session) => session.status === "scheduled" && session.startsAt > now
+      (session) => session.status === "scheduled" && session.startsAtUTC > now
     )
-    .sort((a, b) => a.startsAt - b.startsAt);
+    .sort((a, b) => a.startsAtUTC - b.startsAtUTC);
 
   return upcomingSessions.length > 0 ? upcomingSessions[0] : null;
 });
@@ -135,21 +140,10 @@ completeSubscriptionSchema.virtual("nextSession").get(function () {
 // Indexes
 completeSubscriptionSchema.index({ user: 1, status: 1 });
 completeSubscriptionSchema.index({ userEmail: 1 });
-completeSubscriptionSchema.index({ "sessions.startsAt": 1 });
+completeSubscriptionSchema.index({ "sessions.startsAtUTC": 1 });
 completeSubscriptionSchema.index({ startDate: 1, endDate: 1 });
 
-// Pre-save middleware to ensure startsAt is computed correctly
-completeSubscriptionSchema.pre("save", function (next) {
-  this.sessions.forEach((session) => {
-    if (session.date && session.time) {
-      const [hours, minutes] = session.time.split(":").map(Number);
-      const startsAt = new Date(session.date);
-      startsAt.setHours(hours, minutes, 0, 0);
-      session.startsAt = startsAt;
-    }
-  });
-  next();
-});
+// Remove pre-save middleware - UTC times are calculated in controllers
 
 const CompleteSubscription = mongoose.model(
   "CompleteSubscription",

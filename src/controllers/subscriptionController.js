@@ -9,14 +9,7 @@ import {
   generateSessionsConfirmedTemplates,
 } from "../utils/emailTemplates.js";
 import { validateSessionSlots } from "./sessionsController.js";
-
-// Helper function to convert date and time strings to Date object
-function toStartsAt(dateStr, timeStr) {
-  const [h, m] = timeStr.split(":").map(Number);
-  const d = new Date(dateStr);
-  d.setHours(h, m, 0, 0);
-  return d;
-}
+import { toUTC, fromUTC } from "../utils/timezoneUtils.js";
 
 // Helper function to get week start (Monday)
 function getWeekStart(date) {
@@ -38,7 +31,6 @@ export const createCompleteSubscription = asyncWrapper(
 
     const userId = req.user.id;
     const userEmail = req.user.email;
-
     // 1. Validate subscription plan
     const plan = await SubscriptionPlan.findById(subscriptionPlanId);
     if (!plan || !plan.isActive) {
@@ -50,14 +42,12 @@ export const createCompleteSubscription = asyncWrapper(
         )
       );
     }
-
     // 2. Check if user already has an active subscription to this plan
     const existingSubscription = await CompleteSubscription.findOne({
       user: userId,
       subscriptionPlan: subscriptionPlanId,
       status: { $in: ["confirmed", "active"] },
     });
-
     if (existingSubscription) {
       return next(
         new AppError(
@@ -67,7 +57,6 @@ export const createCompleteSubscription = asyncWrapper(
         )
       );
     }
-
     // 3. Validate sessions count matches plan
     if (!sessions || sessions.length !== plan.sessionsPerMonth) {
       return next(
@@ -78,9 +67,24 @@ export const createCompleteSubscription = asyncWrapper(
         )
       );
     }
+    // 4. استخدم الدولة فقط من بيانات المستخدم في قاعدة البيانات
+    // Log بيانات المستخدم للتحقق من وجود خاصية country
+    console.log("User object in subscription:", req.user);
+    let userCountry = req.user.country ? req.user.country.trim() : null;
+    if (!userCountry) {
+      return next(
+        new AppError(
+          "User country is required for timezone handling. Please update your profile to include your country.",
+          400,
+          httpStatusText.FAIL
+        )
+      );
+    }
 
-    // 4. NEW: Validate session slots (past dates and conflicts)
-    const sessionValidationErrors = await validateSessionSlots(sessions);
+    const sessionValidationErrors = await validateSessionSlots(
+      sessions,
+      userCountry
+    );
     if (sessionValidationErrors.length > 0) {
       return next(
         new AppError(
@@ -96,12 +100,11 @@ export const createCompleteSubscription = asyncWrapper(
     const end = new Date(start);
     end.setDate(end.getDate() + plan.duration);
 
-    // 5. Validate and process sessions
-    const now = new Date();
+    // 6. Process sessions with timezone conversion
     const sessionData = [];
-    const startsAtSet = new Set();
+    const utcTimesSet = new Set();
 
-    // Group sessions by week for validation
+    // Group sessions by week for validation (using user's local time)
     const weeklySessionCount = new Map();
 
     for (const session of sessions) {
@@ -118,59 +121,50 @@ export const createCompleteSubscription = asyncWrapper(
         );
       }
 
-      const startsAt = toStartsAt(date, time);
+      try {
+        // Convert user's local time to UTC
+        const { utcDateTime } = toUTC(date, time, userCountry);
 
-      // Check for past dates
-      if (startsAt < now) {
+        // Check for duplicate UTC times
+        const utcTimeKey = utcDateTime.getTime();
+        if (utcTimesSet.has(utcTimeKey)) {
+          return next(
+            new AppError(
+              "Duplicate session times are not allowed",
+              400,
+              httpStatusText.FAIL
+            )
+          );
+        }
+        utcTimesSet.add(utcTimeKey);
+
+        // Count sessions per week (using user's local time for week calculation)
+        const userDateTime = new Date(`${date}T${time}:00`);
+        const weekStart = getWeekStart(userDateTime).getTime();
+        weeklySessionCount.set(
+          weekStart,
+          (weeklySessionCount.get(weekStart) || 0) + 1
+        );
+
+        sessionData.push({
+          startsAtUTC: utcDateTime,
+          userLocalDate: date,
+          userLocalTime: time,
+          userCountry: userCountry,
+          notes: notes?.trim() || "",
+        });
+      } catch (error) {
         return next(
           new AppError(
-            "Session times cannot be in the past",
+            `Invalid date/time format for session: ${date} ${time}`,
             400,
             httpStatusText.FAIL
           )
         );
       }
-
-      // Check if session is within subscription window
-      if (startsAt < start || startsAt > end) {
-        return next(
-          new AppError(
-            "All sessions must be within the subscription period",
-            400,
-            httpStatusText.FAIL
-          )
-        );
-      }
-
-      // Check for duplicate times
-      const timeKey = startsAt.getTime();
-      if (startsAtSet.has(timeKey)) {
-        return next(
-          new AppError(
-            "Duplicate session times are not allowed",
-            400,
-            httpStatusText.FAIL
-          )
-        );
-      }
-      startsAtSet.add(timeKey);
-
-      // Count sessions per week
-      const weekStart = getWeekStart(startsAt).getTime();
-      weeklySessionCount.set(
-        weekStart,
-        (weeklySessionCount.get(weekStart) || 0) + 1
-      );
-
-      sessionData.push({
-        date,
-        time,
-        startsAt,
-        notes: notes?.trim() || "",
-      });
     }
 
-    // 6. Validate weekly session limits
+    // 7. Validate weekly session limits
     for (const [, weekCount] of weeklySessionCount) {
       if (weekCount > plan.sessionsPerWeek) {
         return next(
@@ -183,12 +177,12 @@ export const createCompleteSubscription = asyncWrapper(
       }
     }
 
-    // 7. Check for conflicts with user's existing sessions
+    // 8. Check for conflicts with existing sessions using UTC times
     const existingSessions = await CompleteSubscription.find({
       user: userId,
       status: { $in: ["confirmed", "active"] },
-      "sessions.startsAt": {
-        $in: Array.from(startsAtSet).map((t) => new Date(t)),
+      "sessions.startsAtUTC": {
+        $in: Array.from(utcTimesSet).map((t) => new Date(t)),
       },
     });
 
@@ -202,10 +196,11 @@ export const createCompleteSubscription = asyncWrapper(
       );
     }
 
-    // 8. Create the complete subscription
+    // 9. Create the complete subscription
     const completeSubscription = await CompleteSubscription.create({
       user: userId,
       userEmail,
+      userCountry,
       subscriptionPlan: subscriptionPlanId,
       planName: plan.name,
       planPrice: plan.price,
@@ -218,11 +213,22 @@ export const createCompleteSubscription = asyncWrapper(
       status: "confirmed",
     });
 
-    // 9. Send confirmation email with ICS file
+    // 10. Send confirmation email with ICS file
     try {
-      const sortedSessions = sessionData
-        .map((s) => s.startsAt)
+      // Sort sessions by UTC time for email display
+      const sortedUTCSessions = sessionData
+        .map((s) => s.startsAtUTC)
         .sort((a, b) => a - b);
+
+      // Convert UTC times to user's local timezone for email display
+      const displaySessions = sortedUTCSessions.map((utcTime) => {
+        const displayed = fromUTC(utcTime, userCountry);
+        return {
+          utcTime,
+          localDateTime: displayed.dateTime,
+          formatted: displayed.formatted,
+        };
+      });
 
       // Use firstName if available, otherwise fallback to email part
       const userName = req.user.firstName || req.user.email.split("@")[0];
@@ -233,7 +239,9 @@ export const createCompleteSubscription = asyncWrapper(
         totalSessions: plan.sessionsPerMonth,
         planPrice: plan.price,
         planCurrency: plan.currency || "USD",
-        startsAtList: sortedSessions,
+        startsAtList: sortedUTCSessions, // Use UTC times for ICS generation
+        displaySessions, // Include display times for email body
+        userCountry,
       });
 
       const ics = buildIcsForSessions({
@@ -241,8 +249,8 @@ export const createCompleteSubscription = asyncWrapper(
         organizerEmail: process.env.EMAIL_FROM,
         userEmail,
         planName: plan.name,
-        events: sortedSessions.map((startsAt) => ({
-          startsAt,
+        events: sortedUTCSessions.map((startsAtUTC) => ({
+          startsAt: startsAtUTC, // ICS should use UTC times
           durationMinutes: 30,
         })),
       });
@@ -297,12 +305,14 @@ export const createCompleteSubscription = asyncWrapper(
   }
 );
 
-// @desc Get user's complete subscriptions (simplified)
+// @desc Get user's complete subscriptions with timezone conversion
 // @route GET /api/v1/user/complete-subscriptions
 // @access Private
 export const getMyCompleteSubscriptions = asyncWrapper(
   async (req, res, next) => {
     const userId = req.user.id;
+    const { displayCountry } = req.query; // Optional: for timezone display
+    const userCountry = displayCountry || req.user.country; // Use query param or user's country
 
     const subscriptions = await CompleteSubscription.find({ user: userId })
       .populate("subscriptionPlan", "name description features")
@@ -326,14 +336,34 @@ export const getMyCompleteSubscriptions = asyncWrapper(
           status: sub.status,
           nextSession: sub.nextSession,
           createdAt: sub.createdAt,
-          sessions: sub.sessions.map((session) => ({
-            id: session._id,
-            date: session.date,
-            time: session.time,
-            startsAt: session.startsAt,
-            status: session.status,
-            notes: session.notes,
-          })),
+          sessions: sub.sessions.map((session) => {
+            // Convert UTC time to display timezone if available
+            if (session.startsAtUTC && userCountry) {
+              const displayed = fromUTC(session.startsAtUTC, userCountry);
+              return {
+                id: session._id,
+                date: displayed.date,
+                time: displayed.time,
+                startsAtUTC: session.startsAtUTC, // Keep UTC for reference
+                displayTime: displayed.formatted,
+                timezone: displayed.timezone,
+                status: session.status,
+                notes: session.notes,
+              };
+            } else {
+              // Fallback for old data format or missing country
+              return {
+                id: session._id,
+                date: session.date || null,
+                time: session.time || null,
+                startsAt: session.startsAt || null, // Legacy field
+                startsAtUTC: session.startsAtUTC || null,
+                status: session.status,
+                notes: session.notes,
+              };
+            }
+          }),
+          displayCountry: userCountry,
         })),
       },
     });
