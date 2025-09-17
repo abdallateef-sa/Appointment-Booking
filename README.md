@@ -69,9 +69,8 @@ src/
 ### Supported Countries API:
 
 ```http
-GET /api/v1/countries              # All supported countries
-GET /api/v1/countries/popular      # Popular countries list
-GET /api/v1/countries/:country/timezone  # Get country timezone
+GET /api/v1/countries                             # All supported countries (name + timezone)
+GET /api/v1/countries/:country/timezone          # Get the IANA timezone for a specific country
 ```
 
 ---
@@ -130,8 +129,7 @@ npm run start:prod
 
 ```http
 GET /api/v1/plans
-GET /api/v1/countries              # Get supported countries
-GET /api/v1/countries/popular      # Get popular countries
+GET /api/v1/countries              # Get supported countries (name + timezone)
 ```
 
 Display all available plans for selection and supported countries
@@ -164,23 +162,20 @@ Display all available plans for selection and supported countries
 ```json
 {
   "status": "SUCCESS",
-  "results": 15,
+  "results": 200,
   "data": {
-    "popularCountries": [
+    "countries": [
       {
         "name": "United States",
-        "timezone": "America/New_York",
-        "timezoneDisplay": "America/New York"
+        "timezone": "America/New_York"
       },
       {
         "name": "United Kingdom",
-        "timezone": "Europe/London",
-        "timezoneDisplay": "Europe/London"
+        "timezone": "Europe/London"
       },
       {
         "name": "Saudi Arabia",
-        "timezone": "Asia/Riyadh",
-        "timezoneDisplay": "Asia/Riyadh"
+        "timezone": "Asia/Riyadh"
       }
     ]
   }
@@ -224,8 +219,8 @@ Content-Type: application/json
   "firstName": "Ahmed",
   "lastName": "Mohamed",
   "phone": "+201234567890",
-  "gender": "Male",
-  "country": "Egypt"
+  "gender": "Male"
+  // note: "country" is optional — the server will compute and persist the user's timezone
 }
 ```
 
@@ -255,6 +250,15 @@ Content-Type: application/json
   }
 }
 ```
+
+### Get user profile
+
+```http
+GET /api/v1/user/profile
+Authorization: Bearer YOUR_TOKEN
+```
+
+This returns the authenticated user's profile including the persisted IANA timezone (if available) and country.
 
 ### 2. Create Complete Subscription (Timezone-Aware)
 
@@ -291,7 +295,7 @@ Content-Type: application/json
 }
 ```
 
-**Note**: The user's country is automatically taken from their profile for timezone conversion.
+**Note**: The user's country is automatically taken from their profile (or inferred from the optional request header `x-country` when available) for timezone conversion. The server computes and persists the user's IANA timezone on registration; users do not need to enter their country manually.
 
 **Response:**
 
@@ -512,7 +516,7 @@ Authorization: Bearer ADMIN_TOKEN
 ```mermaid
 graph TD
     A[Visit Website] --> B[View Available Plans GET /plans]
-    B --> B1[View Supported Countries GET /countries/popular]
+  B --> B1[View Supported Countries GET /countries]
     B1 --> C[Choose Plan & Country]
     C --> D[Register New Account or Login]
     D --> E[Fill Complete Subscription Form]
@@ -612,7 +616,7 @@ npm run start:dev
 curl http://localhost:4000/api/v1/plans
 
 # View supported countries
-curl http://localhost:4000/api/v1/countries/popular
+curl http://localhost:4000/api/v1/countries
 
 # Register new user
 curl -X POST http://localhost:4000/api/v1/auth/send-otp \
@@ -627,7 +631,7 @@ curl -X POST http://localhost:4000/api/v1/auth/send-otp \
 ### Get Supported Countries:
 
 ```bash
-curl http://localhost:4000/api/v1/countries/popular
+curl http://localhost:4000/api/v1/countries
 ```
 
 ### Register New User:
@@ -651,8 +655,19 @@ curl -X POST http://localhost:4000/api/v1/auth/complete-registration \
     "firstName": "Ahmed",
     "lastName": "Mohamed",
     "phone": "+201234567890",
-    "gender": "Male",
-    "country": "United States"
+    "gender": "Male"
+  }'
+
+# Optional: provide `x-country` header (proxy or frontend may set this) to help the server infer timezone
+curl -X POST http://localhost:4000/api/v1/auth/complete-registration \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer TEMP_TOKEN" \
+  -H "x-country: Egypt" \
+  -d '{
+    "firstName": "Ahmed",
+    "lastName": "Mohamed",
+    "phone": "+201234567890",
+    "gender": "Male"
   }'
 ```
 
@@ -789,7 +804,7 @@ curl -X POST http://localhost:4000/api/v1/admin/subscription-plans \
   gender: String,              // Male/Female
   country: String,             // User's country (for timezone)
   role: String,                // User/Admin
-  timezone: String,            // Virtual property - auto-calculated from country
+  timezone: String,            // Persisted IANA timezone (e.g. "America/New_York") - computed on registration
   createdAt: Date,
   updatedAt: Date
 }
@@ -848,7 +863,7 @@ This will test:
 
 ```bash
 # Test 1: Get supported countries
-curl http://localhost:4000/api/v1/countries/popular
+curl http://localhost:4000/api/v1/countries
 
 # Test 2: Check specific country timezone
 curl http://localhost:4000/api/v1/countries/United%20States/timezone
@@ -878,17 +893,3 @@ curl "http://localhost:4000/api/v1/user/complete-subscriptions?displayCountry=Ja
 4. **All see correct local time** for their timezone
 
 For detailed documentation, see: [TIMEZONE_SYSTEM.md](TIMEZONE_SYSTEM.md)
-
----
-
-## 📞 Support and Help
-
-- **Developer:** Abdullah Abdellatif
-- **Email:** abdallateefshohdy0190@gmail.com
-- **GitHub:** [abdallateef-sa](https://github.com/abdallateef-sa)
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

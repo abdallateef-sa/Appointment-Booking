@@ -52,27 +52,6 @@
 					"response": []
 				},
 				{
-					"name": "Get Popular Countries",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/api/v1/countries/popular",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"countries",
-								"popular"
-							]
-						},
-						"description": "Get commonly used countries for booking"
-					},
-					"response": []
-				},
-				{
 					"name": "Get Country Timezone",
 					"request": {
 						"method": "GET",

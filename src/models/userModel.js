@@ -58,6 +58,12 @@ const userSchema = new mongoose.Schema(
       },
       trim: true,
     },
+    // Persisted timezone (IANA) calculated from country when available
+    timezone: {
+      type: String,
+      default: null,
+      trim: true,
+    },
     role: {
       type: String,
       enum: ["User", "Admin"],
@@ -67,9 +73,6 @@ const userSchema = new mongoose.Schema(
   { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );
 
-// Virtual property to get timezone from country
-userSchema.virtual("timezone").get(function () {
-  return getTimezoneForCountry(this.country);
-});
+// Note: timezone is now stored persistently in the `timezone` field.
 
 export default mongoose.model("User", userSchema);

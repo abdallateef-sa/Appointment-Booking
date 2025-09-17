@@ -9,6 +9,7 @@ import {
   generateOtpEmailTemplate,
   generateOtpTextTemplate,
 } from "../utils/emailTemplates.js";
+import { getTimezoneForCountry } from "../utils/countryTimezone.js";
 
 // In-memory storage for temporary OTP verification and email verification (in production use Redis)
 const tempOtpStorage = new Map();
@@ -190,7 +191,14 @@ export const verifyOtp = asyncWrapper(async (req, res, next) => {
 
 // Step 3: Complete registration with personal information
 export const completeRegistration = asyncWrapper(async (req, res, next) => {
-  const { firstName, lastName, phone, gender, country } = req.body;
+  const { firstName, lastName, phone, gender } = req.body;
+
+  // Country may not be provided by the frontend; try to infer from headers
+  let country = req.body.country;
+  if (!country) {
+    country =
+      req.headers["x-country"] || req.headers["x-forwarded-country"] || null;
+  }
 
   // Get email from token (no user ID yet since user doesn't exist in DB)
   const userEmail = req.user.email;
@@ -241,6 +249,7 @@ export const completeRegistration = asyncWrapper(async (req, res, next) => {
   }
 
   // Create new user in database (ONLY NOW!)
+  const tz = country ? getTimezoneForCountry(country) : null;
   const newUser = new user({
     email: userEmail,
     emailVerified: true,
@@ -248,7 +257,8 @@ export const completeRegistration = asyncWrapper(async (req, res, next) => {
     lastName: lastName.trim(),
     phone: phone,
     gender: gender,
-    country: country.trim(),
+    country: country ? country.trim() : undefined,
+    timezone: tz,
     role: "User",
   });
 
