@@ -220,15 +220,18 @@ export const createCompleteSubscription = asyncWrapper(
         .map((s) => s.startsAtUTC)
         .sort((a, b) => a - b);
 
-      // Convert UTC times to user's local timezone for email display
-      const displaySessions = sortedUTCSessions.map((utcTime) => {
-        const displayed = fromUTC(utcTime, userCountry);
-        return {
-          utcTime,
-          localDateTime: displayed.dateTime,
-          formatted: displayed.formatted,
-        };
-      });
+      // Use the stored session local date/time from the created subscription for email display
+      // This ensures the email shows exactly what was saved in the DB (userLocalDate / userLocalTime)
+      const displaySessions = (completeSubscription.sessions || [])
+        .slice()
+        .sort((a, b) => new Date(a.startsAtUTC) - new Date(b.startsAtUTC))
+        .map((s) => ({
+          startsAtUTC: s.startsAtUTC,
+          userLocalDate: s.userLocalDate,
+          userLocalTime: s.userLocalTime,
+          userCountry: s.userCountry,
+          formatted: `${s.userLocalDate} ${s.userLocalTime}`,
+        }));
 
       // Use firstName if available, otherwise fallback to email part
       const userName = req.user.firstName || req.user.email.split("@")[0];
@@ -240,7 +243,7 @@ export const createCompleteSubscription = asyncWrapper(
         planPrice: plan.price,
         planCurrency: plan.currency || "USD",
         startsAtList: sortedUTCSessions, // Use UTC times for ICS generation
-        displaySessions, // Include display times for email body
+        displaySessions, // Use DB-stored local date/time for email body
         userCountry,
       });
 

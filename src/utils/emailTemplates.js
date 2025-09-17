@@ -753,9 +753,17 @@ export const generateSessionsConfirmedTemplates = ({
   planPrice = 0,
   planCurrency = "USD",
   startsAtList,
+  displaySessions = [], // Array of { startsAtUTC, userLocalDate, userLocalTime, userCountry, formatted }
+  userCountry = null,
 }) => {
   // Generate formatted session cards in pairs
-  const sessionCardsHtml = startsAtList
+  // If displaySessions is provided prefer it (shows DB-stored local date/time)
+  const sessionsSource =
+    displaySessions && displaySessions.length
+      ? displaySessions
+      : startsAtList.map((d) => ({ startsAtUTC: d }));
+
+  const sessionCardsHtml = sessionsSource
     .reduce((pairs, date, index) => {
       if (index % 2 === 0) {
         pairs.push([date]);
@@ -768,29 +776,47 @@ export const generateSessionsConfirmedTemplates = ({
       const pairHtml = pair
         .map((d, indexInPair) => {
           const sessionIndex = pairIndex * 2 + indexInPair;
-          const sessionDate = new Date(d);
-          const dayName = sessionDate.toLocaleDateString("en-US", {
-            weekday: "long",
-          });
-          const dateStr = sessionDate.toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          });
-          const timeStr = sessionDate.toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          });
+          // d may be either { startsAtUTC } or displaySessions item
+          let dayName = "";
+          let dateStr = "";
+          let timeStr = "";
+          if (d.userLocalDate && d.userLocalTime) {
+            // Use DB-stored local date/time
+            const dt = new Date(`${d.userLocalDate}T${d.userLocalTime}:00`);
+            dayName = dt.toLocaleDateString("en-US", { weekday: "long" });
+            dateStr = dt.toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            });
+            timeStr = d.userLocalTime; // keep original format (HH:mm)
+          } else {
+            const sessionDate = new Date(d.startsAtUTC || d);
+            dayName = sessionDate.toLocaleDateString("en-US", {
+              weekday: "long",
+            });
+            dateStr = sessionDate.toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            });
+            timeStr = sessionDate.toLocaleTimeString("en-US", {
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+            });
+          }
 
           return `
-            <div class="session-card">
-              <div class="session-number">Session ${sessionIndex + 1}</div>
-              <div class="session-day">${dayName}</div>
-              <div class="session-date">${dateStr}</div>
-              <div class="session-time">🕒 ${timeStr}</div>
-            </div>
-          `;
+                        <div class="session-card">
+                            <div class="session-number">Session ${
+                              sessionIndex + 1
+                            }</div>
+                            <div class="session-day">${dayName}</div>
+                            <div class="session-date">${dateStr}</div>
+                            <div class="session-time">🕒 ${timeStr}</div>
+                        </div>
+                    `;
         })
         .join("");
 
@@ -1124,6 +1150,12 @@ export const generateSessionsConfirmedTemplates = ({
                     </div>
                 </div>
 
+                <div style="text-align:center; margin-top: 10px; font-size: 13px; color: #475569;">
+                    <em>Note: The times above are shown in your country's local time${
+                      userCountry ? ` (${escapeIcsText(userCountry)})` : ""
+                    } as saved in your profile.</em>
+                </div>
+
                 <div class="payment-note">
                     <span class="icon">❗</span>
                     <div class="payment-note-text">
@@ -1180,6 +1212,10 @@ ${startsAtList
   .join("\n")}
 
 📎 Calendar invites (.ics files) are attached to help you add these appointments to your calendar.
+
+Note: The listed times are in the user's local time${
+    userCountry ? ` (${userCountry})` : ""
+  } as saved in your profile.
 
 Thank you for choosing Bayan School!
 
