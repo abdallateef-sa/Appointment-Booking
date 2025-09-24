@@ -15,6 +15,7 @@ import {
   toggleSubscriptionPlanStatus,
 } from "../controllers/planController.js";
 import verifyToken from "../middlewares/verifyToken.js";
+import optionalVerifyToken from "../middlewares/optionalVerifyToken.js";
 import requireAdmin from "../middlewares/requireAdmin.js";
 import {
   validateAdminRegister,
@@ -47,6 +48,7 @@ const router = Router();
 
 router.post(
   "/register",
+  optionalVerifyToken,
   validateAdminRegister,
   handleAdminValidation,
   register

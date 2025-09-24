@@ -9,11 +9,63 @@ import {
   generateAdminOtpTextTemplate,
 } from "../utils/emailTemplates.js";
 
+// Require a configured super-admin email in .env as SUPER_ADMIN_EMAIL
+const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL;
+
 export const register = asyncWrapper(async (req, res, next) => {
   const { email } = req.body;
+
+  if (!SUPER_ADMIN_EMAIL) {
+    return next(
+      new AppError(
+        "Server misconfiguration: SUPER_ADMIN_EMAIL not set",
+        500,
+        httpStatusText.FAIL
+      )
+    );
+  }
+
+  // Prevent duplicate admin
   const exists = await Admin.findOne({ email });
   if (exists) {
     return next(new AppError("Admin already exists", 409, httpStatusText.FAIL));
+  }
+
+  // If no admins exist yet, allow creating only the configured super-admin account
+  const anyAdmin = await Admin.findOne();
+  if (!anyAdmin) {
+    if (email !== SUPER_ADMIN_EMAIL) {
+      return next(
+        new AppError(
+          "Initial admin must be the configured super-admin",
+          403,
+          httpStatusText.FAIL
+        )
+      );
+    }
+    // proceed to create the initial super-admin
+  } else {
+    // For subsequent admin creations, require the requester to be authenticated
+    // and to be the super-admin (the only one allowed to add admins)
+    if (!req.user) {
+      return next(
+        new AppError(
+          "Authentication required to create admins",
+          401,
+          httpStatusText.FAIL
+        )
+      );
+    }
+
+    if (req.user.email !== SUPER_ADMIN_EMAIL) {
+      return next(
+        new AppError(
+          "Only the super-admin can create new admins",
+          403,
+          httpStatusText.FAIL
+        )
+      );
+    }
   }
 
   const admin = await Admin.create(req.body);

@@ -93,7 +93,10 @@ EMAIL_PORT=587
 EMAIL_USER=your_email@gmail.com
 EMAIL_PASSWORD=your_app_password
 EMAIL_FROM="Appointment Booking <your_email@gmail.com>"
+SUPER_ADMIN_EMAIL=superadmin@example.com
 ```
+
+> NOTE: `SUPER_ADMIN_EMAIL` is required by the app. It defines a single immutable super-admin email that is allowed to create other Admin accounts.
 
 ## 🏃‍♂️ Running the Project
 
@@ -484,7 +487,7 @@ Authorization: Bearer ADMIN_TOKEN
 
 **Response:**
 
-```json
+````json
 {
   "status": "SUCCESS",
   "data": {
@@ -498,16 +501,57 @@ Authorization: Bearer ADMIN_TOKEN
       { "_id": "paid", "count": 120, "totalRevenue": 75000 },
       { "_id": "pending", "count": 30, "totalRevenue": 15000 }
     ],
+
+    ### Creating the initial Super-Admin (one-time)
+
+    The application requires `SUPER_ADMIN_EMAIL` to be set in your environment. To create the very first admin in a fresh database:
+
+    1. Set `SUPER_ADMIN_EMAIL` in your `.env` to the email you want to be the super-admin.
+    2. Send a POST to `/api/v1/admin/register` with the body containing that email and the rest of required admin fields. No Authorization header is required for this first creation.
+
+    Example (curl):
+
+    ```bash
+    curl -X POST http://localhost:4000/api/v1/admin/register \
+      -H "Content-Type: application/json" \
+      -d '{"name":"Super Admin","email":"superadmin@example.com","password":"YourPassword","gender":"Male","country":"Egypt","phone":"+201..."}'
+    ```
+
+    After the first admin exists, only the super-admin (the account with `SUPER_ADMIN_EMAIL`) is allowed to add new admins.
+
+    ### Creating additional Admins (super-admin only)
+
+    Workflow:
+
+    1. Login as the super-admin to get a JWT token from `/api/v1/admin/login`.
+    2. Use that token in the Authorization header to call `/api/v1/admin/register` to create new admins.
+
+    Example (pwsh):
+
+    ```pwsh
+    # login
     "popularPlans": [
       { "_id": "Basic Plan", "count": 90, "totalRevenue": 45000 },
+
+    # create new admin
       { "_id": "Premium Plan", "count": 60, "totalRevenue": 60000 }
+    ```
+
+    Example (curl):
+
+    ```bash
+    curl -X POST http://localhost:4000/api/v1/admin/register \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer YOUR_SUPERADMIN_TOKEN" \
+      -d '{"name":"New Admin","email":"newadmin@example.com","password":"pwd123","gender":"Male","country":"Egypt","phone":"+201..."}'
+    ```
     ],
     "monthlyTrends": [
       { "_id": { "year": 2025, "month": 1 }, "count": 25, "revenue": 15000 }
     ]
   }
 }
-```
+````
 
 ---
 
