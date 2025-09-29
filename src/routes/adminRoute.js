@@ -35,6 +35,7 @@ import {
   updateCompleteSubscriptionStatus,
   updateSessionStatusAdmin,
   deleteCompleteSubscription,
+  confirmPayment,
   getCompleteSubscriptionStats,
 } from "../controllers/adminSubscriptionController.js";
 import {
@@ -43,6 +44,8 @@ import {
   validateUpdateSessionStatus,
   handleCompleteSubscriptionValidation,
 } from "../utils/validators/subscriptionValidators.js";
+import { getUsers } from "../controllers/adminController.js";
+import { deleteUser } from "../controllers/adminController.js";
 
 const router = Router();
 
@@ -122,6 +125,19 @@ router.patch(
 );
 
 // Complete Subscriptions Management Routes
+router.get("/users", verifyToken, requireAdmin, getUsers);
+
+router.delete(
+  "/users/:id",
+  verifyToken,
+  requireAdmin,
+  (req, res, next) => {
+    if (!req.params.id) return next(new Error("User id is required"));
+    next();
+  },
+  deleteUser
+);
+
 router.get(
   "/complete-subscriptions/stats",
   verifyToken,
@@ -163,6 +179,15 @@ router.patch(
   validateUpdateSessionStatus,
   handleCompleteSubscriptionValidation,
   updateSessionStatusAdmin
+);
+
+router.patch(
+  "/complete-subscriptions/:id/confirm-payment",
+  verifyToken,
+  requireAdmin,
+  validateCompleteSubscriptionId,
+  handleCompleteSubscriptionValidation,
+  confirmPayment
 );
 
 router.delete(

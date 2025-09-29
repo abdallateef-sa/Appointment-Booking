@@ -937,3 +937,75 @@ curl "http://localhost:4000/api/v1/user/complete-subscriptions?displayCountry=Ja
 4. **All see correct local time** for their timezone
 
 For detailed documentation, see: [TIMEZONE_SYSTEM.md](TIMEZONE_SYSTEM.md)
+
+---
+
+## 📝 Changelog — التحديثات الأخيرة
+
+هذه الفقرة تلخِّص التعديلات والإضافات الأخيرة في المشروع وكيفية استخدامها (خاصّة وظائف الأدمن الجديدة).
+
+- SUPER_ADMIN_EMAIL (env)
+
+  - تم إضافة متغير بيئي جديد `SUPER_ADMIN_EMAIL`. يجب ضبطه في `.env` لتحديد بريد السوبر-أدمن الوحيد والمصرّح له بإنشاء مدراء (Admins).
+
+- تقييد تسجيل Admins
+
+  - ملف: `src/controllers/adminController.js`
+  - السلوك: إذا كانت قاعدة البيانات فارغة يسمح بإنشاء الـ Super-Admin فقط عندما يكون حقل `email` يطابق `SUPER_ADMIN_EMAIL`. بعد وجود أي Admin، يمكن إنشاء Admins الجدد فقط عندما يرسل السوبر-أدمن طلبًا موثّقًا (Authorization: Bearer TOKEN).
+
+- middleware اختياري لتحليل التوكن
+
+  - ملف: `src/middlewares/optionalVerifyToken.js`
+  - السلوك: يحلل التوكن إن وُجد ويضع `req.user`، وإلا يتابع التنفيذ بدون خطأ. يستخدم في مسار التسجيل لتسهيل إنشاء السوبر-أدمن الأولي.
+
+- حماية موديل Admin من الحذف/تغيير الإيميل
+
+  - ملف: `src/models/adminModel.js`
+  - السلوك: منع حذف أو تغيير إيميل السوبر-أدمن (الذي طُبق عنه `SUPER_ADMIN_EMAIL`) عبر middleware في الموديل.
+
+- إدارة المستخدمين (Admin endpoints)
+
+  - GET /api/v1/admin/users
+
+    - وصف: جلب المستخدمين مع pagination وفلتر `search` (يبحث في email وfirstName/lastName).
+    - حماية: `verifyToken` + `requireAdmin`.
+    - أمثلة:
+
+      curl:
+
+      ```bash
+      curl -H "Authorization: Bearer <ADMIN_TOKEN>" "http://localhost:4000/api/v1/admin/users?page=1&limit=20&search=ahmed"
+      ```
+
+  - DELETE /api/v1/admin/users/:id
+    - وصف: يحذف المستخدم والمستندات CompleteSubscription المرتبطة به.
+    - حماية: `verifyToken` + `requireAdmin`.
+
+- إدارة الاشتراكات (Admin)
+
+  - DELETE /api/v1/admin/complete-subscriptions/:id
+
+    - حذف اشتراك محدد (موجود سابقًا).
+
+  - PATCH /api/v1/admin/complete-subscriptions/:id/confirm-payment
+
+    - وصف: يمكّن الأدمن من تأكيد الدفع للاشتراك.
+    - تغيير مضاف في الموديل: `paymentStatus` يصبح `paid`، وتمت إضافة الحقول `paymentConfirmedAt` و `paymentReference`.
+    - حماية: `verifyToken` + `requireAdmin`.
+    - مثال curl:
+
+      ```bash
+      curl -X PATCH http://localhost:4000/api/v1/admin/complete-subscriptions/68ca58918750806333cdeecb/confirm-payment \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer <ADMIN_TOKEN>" \
+        -d '{"reference":"TXN-123456"}'
+      ```
+
+    - استجابة متوقعة: تحتوي على `paymentStatus: "paid"` و`paymentConfirmedAt` و`paymentReference`.
+
+- ملاحظات أمان ووظيفية
+  - جميع مسارات الإدارة محمية بميدلوير `verifyToken` و `requireAdmin`، فتأكد من استخدام توكن وصلاحية الأدمن.
+  - حذف المستخدم يقوم بحذف اشتراكاته (CompleteSubscription) فقط — إذا لديك موارد أخرى مرتبطة (سجلات دفع، ملفات، إلخ) يمكن إضافتها للحذف أيضاً.
+  - حالياً لا يتم إرسال إشعار بريد إلكتروني تلقائي بعد تأكيد الدفع — يمكن إضافته عند الطلب.
+
+---

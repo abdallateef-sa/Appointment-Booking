@@ -98,6 +98,16 @@ const completeSubscriptionSchema = new mongoose.Schema(
       default: "pending",
     },
 
+    // Payment confirmation details
+    paymentConfirmedAt: {
+      type: Date,
+      default: null,
+    },
+    paymentReference: {
+      type: String,
+      default: null,
+    },
+
     // Additional Notes
     notes: {
       type: String,

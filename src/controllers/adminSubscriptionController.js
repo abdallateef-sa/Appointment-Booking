@@ -308,3 +308,37 @@ export const getCompleteSubscriptionStats = asyncWrapper(
     });
   }
 );
+
+// @desc Confirm payment for a subscription (Admin only)
+// @route PATCH /api/v1/admin/complete-subscriptions/:id/confirm-payment
+// @access Private/Admin
+export const confirmPayment = asyncWrapper(async (req, res, next) => {
+  const { id } = req.params;
+  const { reference } = req.body; // optional payment reference
+
+  const subscription = await CompleteSubscription.findById(id);
+  if (!subscription) {
+    return next(
+      new AppError("Complete subscription not found", 404, httpStatusText.FAIL)
+    );
+  }
+
+  subscription.paymentStatus = "paid";
+  subscription.paymentConfirmedAt = new Date();
+  if (reference) subscription.paymentReference = reference;
+
+  await subscription.save();
+
+  res.status(200).json({
+    status: httpStatusText.SUCCESS,
+    message: "Payment confirmed",
+    data: {
+      subscription: {
+        id: subscription._id,
+        paymentStatus: subscription.paymentStatus,
+        paymentConfirmedAt: subscription.paymentConfirmedAt,
+        paymentReference: subscription.paymentReference,
+      },
+    },
+  });
+});

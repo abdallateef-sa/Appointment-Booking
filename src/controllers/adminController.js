@@ -8,6 +8,8 @@ import {
   generateAdminOtpTemplate,
   generateAdminOtpTextTemplate,
 } from "../utils/emailTemplates.js";
+import User from "../models/userModel.js";
+import CompleteSubscription from "../models/subscriptionModel.js";
 
 // Require a configured super-admin email in .env as SUPER_ADMIN_EMAIL
 const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL;
@@ -161,4 +163,57 @@ export const resetPassword = asyncWrapper(async (req, res, next) => {
   res
     .status(200)
     .json({ status: httpStatusText.SUCCESS, message: "Password updated" });
+});
+
+export const getUsers = asyncWrapper(async (req, res, next) => {
+  // Optional query params: page, limit, search (by email or name)
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 20;
+  const skip = (page - 1) * limit;
+
+  const { search } = req.query;
+  const filter = {};
+  if (search) {
+    const regex = new RegExp(search, "i");
+    filter.$or = [{ email: regex }, { firstName: regex }, { lastName: regex }];
+  }
+
+  const [total, users] = await Promise.all([
+    User.countDocuments(filter),
+    User.find(filter)
+      .select("firstName lastName email phone country timezone role createdAt")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+  ]);
+
+  res.status(200).json({
+    status: httpStatusText.SUCCESS,
+    results: users.length,
+    page,
+    total,
+    data: { users },
+  });
+});
+
+// Delete a user and their complete subscriptions (Admin only)
+export const deleteUser = asyncWrapper(async (req, res, next) => {
+  const { id } = req.params;
+
+  const user = await User.findById(id);
+  if (!user) {
+    return next(new AppError("User not found", 404, httpStatusText.FAIL));
+  }
+
+  // Remove user's complete subscriptions
+  await CompleteSubscription.deleteMany({ user: user._id });
+
+  // Delete user
+  await User.findByIdAndDelete(id);
+
+  res.status(200).json({
+    status: httpStatusText.SUCCESS,
+    message: "User and related subscriptions deleted successfully",
+    data: null,
+  });
 });
