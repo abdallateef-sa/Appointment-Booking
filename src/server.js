@@ -17,7 +17,12 @@ if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));
 }
 
-app.use(cors());
+app.use(cors({
+    origin: 'https://bayan-school.netlify.app', // رابط الفرونت
+    methods: ['GET','POST','PUT','DELETE'],
+    credentials: true // لو تستخدم الكوكيز
+}));
+
 app.use(express.json());
 
 //Mount Route
