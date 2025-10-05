@@ -17,7 +17,10 @@ if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));
 }
 
-app.use(cors());
+app.use(cors({
+  origin: '*', 
+  credentials: true
+}));
 app.use(express.json());
 
 //Mount Route
