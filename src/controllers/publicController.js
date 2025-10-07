@@ -5,7 +5,7 @@ import asyncWrapper from "../middlewares/asyncWrapper.js";
 export const listActivePlans = asyncWrapper(async (req, res) => {
   const plans = await SubscriptionPlan.find({ isActive: true })
     .select(
-      "name description sessionsPerMonth sessionsPerWeek price currency duration isActive"
+      "name description sessionsPerMonth sessionsPerWeek price currency duration isActive features"
     )
     .sort("price");
 
