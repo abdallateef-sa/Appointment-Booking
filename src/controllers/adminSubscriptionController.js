@@ -59,7 +59,10 @@ export const getCompleteSubscriptionById = asyncWrapper(
     const { displayCountry } = req.query; // Optional: for timezone display
 
     const subscription = await CompleteSubscription.findById(id)
-      .populate("user", "firstName lastName email phone country timezone createdAt")
+      .populate(
+        "user",
+        "firstName lastName email phone country timezone createdAt"
+      )
       .populate("subscriptionPlan")
       .select("-__v");
 

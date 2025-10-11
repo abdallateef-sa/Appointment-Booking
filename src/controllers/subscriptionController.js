@@ -78,7 +78,7 @@ export const createCompleteSubscription = asyncWrapper(
     const end = new Date(start);
     end.setDate(end.getDate() + plan.duration);
 
-  // 6. Process sessions (الفرونت يحسب startsAtUTC ويرسله لنا)
+    // 6. Process sessions (الفرونت يحسب startsAtUTC ويرسله لنا)
     const sessionData = [];
     const utcTimesSet = new Set();
 
@@ -86,7 +86,7 @@ export const createCompleteSubscription = asyncWrapper(
     const weeklySessionCount = new Map();
 
     for (const session of sessions) {
-  const { date, time, startsAtUTC, notes } = session;
+      const { date, time, startsAtUTC, notes } = session;
 
       // Require startsAtUTC from frontend
       if (!startsAtUTC) {
@@ -103,7 +103,11 @@ export const createCompleteSubscription = asyncWrapper(
         const utcDateTime = new Date(startsAtUTC);
         if (isNaN(utcDateTime.getTime())) {
           return next(
-            new AppError("Invalid startsAtUTC datetime", 400, httpStatusText.FAIL)
+            new AppError(
+              "Invalid startsAtUTC datetime",
+              400,
+              httpStatusText.FAIL
+            )
           );
         }
 
