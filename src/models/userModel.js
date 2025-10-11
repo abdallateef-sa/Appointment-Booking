@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import validator from "validator";
-import { getTimezoneForCountry } from "../utils/countryTimezone.js";
+// Timezone is provided by the frontend; no backend lookup
 
 const userSchema = new mongoose.Schema(
   {

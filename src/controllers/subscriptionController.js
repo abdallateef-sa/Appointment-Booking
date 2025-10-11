@@ -8,8 +8,6 @@ import {
   buildIcsForSessions,
   generateSessionsConfirmedTemplates,
 } from "../utils/emailTemplates.js";
-import { validateSessionSlots } from "./sessionsController.js";
-import { toUTC, fromUTC } from "../utils/timezoneUtils.js";
 
 // Helper function to get week start (Monday)
 function getWeekStart(date) {
@@ -67,31 +65,11 @@ export const createCompleteSubscription = asyncWrapper(
         )
       );
     }
-    // 4. استخدم الدولة فقط من بيانات المستخدم في قاعدة البيانات
-    // Log بيانات المستخدم للتحقق من وجود خاصية country
-    console.log("User object in subscription:", req.user);
-    let userCountry = req.user.country ? req.user.country.trim() : null;
+    // 4. احصل على الدولة من بروفايل المستخدم أو من جسم الطلب (الفرونت يحددها)
+    let userCountry = (req.user.country || req.body.userCountry || "").trim();
     if (!userCountry) {
       return next(
-        new AppError(
-          "User country is required for timezone handling. Please update your profile to include your country.",
-          400,
-          httpStatusText.FAIL
-        )
-      );
-    }
-
-    const sessionValidationErrors = await validateSessionSlots(
-      sessions,
-      userCountry
-    );
-    if (sessionValidationErrors.length > 0) {
-      return next(
-        new AppError(
-          `Session validation failed: ${sessionValidationErrors.join("; ")}`,
-          400,
-          httpStatusText.FAIL
-        )
+        new AppError("User country is required", 400, httpStatusText.FAIL)
       );
     }
 
@@ -100,7 +78,7 @@ export const createCompleteSubscription = asyncWrapper(
     const end = new Date(start);
     end.setDate(end.getDate() + plan.duration);
 
-    // 6. Process sessions with timezone conversion
+  // 6. Process sessions (الفرونت يحسب startsAtUTC ويرسله لنا)
     const sessionData = [];
     const utcTimesSet = new Set();
 
@@ -108,13 +86,13 @@ export const createCompleteSubscription = asyncWrapper(
     const weeklySessionCount = new Map();
 
     for (const session of sessions) {
-      const { date, time, notes } = session;
+  const { date, time, startsAtUTC, notes } = session;
 
-      // Validate date and time format
-      if (!date || !time) {
+      // Require startsAtUTC from frontend
+      if (!startsAtUTC) {
         return next(
           new AppError(
-            "Each session must have date and time",
+            "Each session must include startsAtUTC (ISO datetime in UTC)",
             400,
             httpStatusText.FAIL
           )
@@ -122,8 +100,12 @@ export const createCompleteSubscription = asyncWrapper(
       }
 
       try {
-        // Convert user's local time to UTC
-        const { utcDateTime } = toUTC(date, time, userCountry);
+        const utcDateTime = new Date(startsAtUTC);
+        if (isNaN(utcDateTime.getTime())) {
+          return next(
+            new AppError("Invalid startsAtUTC datetime", 400, httpStatusText.FAIL)
+          );
+        }
 
         // Check for duplicate UTC times
         const utcTimeKey = utcDateTime.getTime();

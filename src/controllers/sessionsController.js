@@ -2,14 +2,8 @@ import subscriptionModel from "../models/subscriptionModel.js";
 import httpStatusText from "../utils/httpStatusText.js";
 import AppError from "../utils/appError.js";
 import asyncWrapper from "../middlewares/asyncWrapper.js";
-import {
-  fromUTC,
-  toUTC,
-  isSlotAvailable,
-  generateAvailableSlots,
-} from "../utils/timezoneUtils.js";
 
-// Get all booked sessions - timezone aware
+// Get all booked sessions
 export const getBookedSessions = asyncWrapper(async (req, res, next) => {
   try {
     const { displayCountry } = req.query; // Country for timezone display

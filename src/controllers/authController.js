@@ -9,7 +9,7 @@ import {
   generateOtpEmailTemplate,
   generateOtpTextTemplate,
 } from "../utils/emailTemplates.js";
-import { getTimezoneForCountry } from "../utils/countryTimezone.js";
+// Timezone is provided by the frontend; no backend lookup
 
 // In-memory storage for temporary OTP verification and email verification (in production use Redis)
 const tempOtpStorage = new Map();
@@ -64,8 +64,8 @@ export const sendEmailVerification = asyncWrapper(async (req, res, next) => {
     });
 
     // Send OTP email
-    const htmlTemplate = generateOtpEmailTemplate(otp, "Valued User");
-    const textTemplate = generateOtpTextTemplate(otp, "Valued User");
+    const htmlTemplate = generateOtpEmailTemplate(otp, "Dear Student");
+    const textTemplate = generateOtpTextTemplate(otp, "Dear Student");
 
     await sendMail({
       email,
@@ -249,7 +249,8 @@ export const completeRegistration = asyncWrapper(async (req, res, next) => {
   }
 
   // Create new user in database (ONLY NOW!)
-  const tz = country ? getTimezoneForCountry(country) : null;
+  // Frontend should send timezone explicitly if needed; otherwise store null
+  const tz = req.body.timezone ?? null;
   const newUser = new user({
     email: userEmail,
     emailVerified: true,

@@ -2,7 +2,6 @@ import CompleteSubscription from "../models/subscriptionModel.js";
 import httpStatusText from "../utils/httpStatusText.js";
 import AppError from "../utils/appError.js";
 import asyncWrapper from "../middlewares/asyncWrapper.js";
-import { fromUTC } from "../utils/timezoneUtils.js";
 
 // @desc Get all complete subscriptions (Admin only)
 // @route GET /api/v1/admin/complete-subscriptions
@@ -60,7 +59,7 @@ export const getCompleteSubscriptionById = asyncWrapper(
     const { displayCountry } = req.query; // Optional: for timezone display
 
     const subscription = await CompleteSubscription.findById(id)
-      .populate("user", "firstName lastName email phone country createdAt")
+      .populate("user", "firstName lastName email phone country timezone createdAt")
       .populate("subscriptionPlan")
       .select("-__v");
 
@@ -101,33 +100,19 @@ export const getCompleteSubscriptionById = asyncWrapper(
           createdAt: subscription.createdAt,
           updatedAt: subscription.updatedAt,
           sessions: subscription.sessions.map((session) => {
-            // Convert UTC time to display timezone if available
-            if (session.startsAtUTC && userCountry) {
-              const displayed = fromUTC(session.startsAtUTC, userCountry);
-              return {
-                id: session._id,
-                date: displayed.date,
-                time: displayed.time,
-                startsAtUTC: session.startsAtUTC,
-                displayTime: displayed.formatted,
-                timezone: displayed.timezone,
-                status: session.status,
-                notes: session.notes,
-              };
-            } else {
-              // Fallback for old data format or missing country
-              return {
-                id: session._id,
-                date: session.date || null,
-                time: session.time || null,
-                startsAt: session.startsAt || null, // Legacy field
-                startsAtUTC: session.startsAtUTC || null,
-                status: session.status,
-                notes: session.notes,
-              };
-            }
+            // نرجع البيانات كما هي مع timezone المستخدم
+            return {
+              id: session._id,
+              date: session.date || null,
+              time: session.time || null,
+              startsAtUTC: session.startsAtUTC || null,
+              timezone: subscription.user?.timezone || null, // timezone من الـ user
+              status: session.status,
+              notes: session.notes,
+            };
           }),
           displayCountry: userCountry,
+          displayTimezone: subscription.user?.timezone, // نضيف timezone على مستوى الـ subscription
         },
       },
     });
